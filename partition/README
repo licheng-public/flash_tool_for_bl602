@@ -1,0 +1,22 @@
+Two utilities are included.
+
+1./ partiton maker
+partition_maker.c is the source to build the executable for generating
+partition from a partition configuration with .toml format. The parser
+implementation is not official TOML compliant though. It would generate
+the number of partition images named as $image_you_named@0x$address,
+where the addresses are the ones specified in partition table of the
+partition configuration file.
+
+The usage is as follows:
+make -f Makefile
+./partition_gen -i part_config -o ./image_you_named
+
+2./ partition dumper
+dump_partition.c is the source to generate dumper.
+gdb_inut and Makefile.dump is used for dump the field in partition table
+from partition binary image.
+It is used to dump and compare with the configuration source.
+
+The usage is as follows:
+INPUT=your_partition_binary make -f Makefile.dump
