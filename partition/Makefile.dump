@@ -1,0 +1,7 @@
+.PHONY: dump clean
+
+dump:
+	gcc -g -O0 dump_partition.c -o ./dump
+	gdb --args ./dump $(INPUT) < gdb_input | sed 's/---Type <return> to continue, or q <return> to quit---//'
+clean:
+	rm -f ./dump dump_partition.o

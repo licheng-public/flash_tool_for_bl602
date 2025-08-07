@@ -1,0 +1,70 @@
+The flashing workflow
+=====================
+
+This is based on the document of
+``https://github.com/bouffalolab/bl_docs/blob/main/BL602_ISP/en/BL602_ISP_protocol.pdf''
+and the open source flash tool from bouffalolab,
+``https://github.com/bouffalolab/BLOpenFlasher/tree/main''
+
+1./ Setup_UART
+2./ Shake_hands
+    Keep sending 0x5555555... for 5 msec
+    read response
+3./ Get_boot_info
+    send command: 0x10, 0x00, 0x00, 0x00
+    read response
+4./ Send_boot_header
+    Read 176 bytes from the loader file
+    make command packet of 180 bytes: 0x11, 0x00, 0xb0, 0x00
+    send command packet
+    read response
+5./ Send_seg_header
+    Read 16 bytes from the loader file
+    make command packet: 0x17, 0x00, 0x10, 0x00
+    send command packet
+    read response
+6./ Send_seg_data
+    Read block of 2048 bytes from the loader file
+    build command packet of 0x18, 0x00, len & 0xff, (len &0xff00)<<8
+    send command packet
+    read response
+    REPEAT the step until the completion of sending the loader file
+7./ Send_check_image
+    build command packet: 0x19, 0x00, 0x00, 0x00
+    send command packet
+    read response
+8./ Send_run_image
+    build command packet: 0x1A, 0x00, 0x00, 0x00
+    send command packet
+    read response
+9./ Shake_hands
+    now the loader file should be running on device, ready for shake hands
+    Keep sending 0x5555555... for 5 msec
+    read response
+10./ Send_files
+    For each of files in the list, do
+    10.1./ open_the_file and calc_sha_the_file
+    10.2./ Send_erase_flash
+        build erase command: 0x30, 0x08, 0x00,...
+        send the erase command
+        read response
+    10.3./ Send_program_flash
+        read the current file by 8K block
+        build programmming packet: 0x31,....
+        send the command packet
+        REPEAT the step until the file is completed
+    10.4./ Send_program_ok
+        build check command packet: 0x3A, 0x00, 0x00, 0x00
+        send the command packet
+        read the response
+    10.5./ Send_sha256
+        build SHA packet: 0x3D, 0x08, 0x00...
+        send the command packet
+        read the response and compare the value with the SHA at host side
+11./ Send_program_finish
+    Send the sequence of 0x5555555...like shake hands
+    read response
+12./ If the response from step 11 indicates 'O''K', the flash is completed
+successfully.    
+
+If any response indicates the error, it should abort the flashing.
