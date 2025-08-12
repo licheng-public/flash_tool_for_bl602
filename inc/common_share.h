@@ -25,4 +25,7 @@
 #define SSIZE(type, field)  sizeof(((type *)0)->field)
 #define SSIZE_A(type, field)  sizeof(((type *)0)->field[0])
 
+/* flag to indicate communication stage */
+extern int boot_rom_stage;
+
 #endif /* _COMMON_SHARE_H */
