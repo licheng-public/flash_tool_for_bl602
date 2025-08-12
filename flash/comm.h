@@ -21,9 +21,13 @@
 #ifndef _COMM_H
 #define _COMM_H
 
-int request_boot_info(int uart_fd);
+#include "packet_comm.h"
 
-int load_boot_header(int uart_fd);
+int hand_shake(int uart_fd, uint32_t baud_rate);
+
+int load_boot_header(int uart_fd, char *eflash_file_name);
+
+int request_boot_info(int uart_fd, boot_info_t *p_boot_info);
 
 int load_pub_key(int uart_fd);
 
@@ -31,9 +35,9 @@ int load_signature(int uart_fd);
 
 int load_aes_iv(int uart_fd);
 
-int load_segment_header(int uart_fd);
+int load_segment_header(int uart_fd, char *eflash_file_name);
 
-int load_segment_data(int uart_fd);
+int load_segment_data(int uart_fd, char *eflash_file_name);
 
 int check_image(int uart_fd);
 

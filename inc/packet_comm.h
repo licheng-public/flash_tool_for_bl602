@@ -127,7 +127,17 @@ typedef struct {
 
 typedef struct {
     uint32_t boot_rom_ver;
-    uint8_t opt_info[16];
+    union {
+        uint8_t opt_info[16];
+        /* XXX: faked, not published by Buffalolab */
+        struct __attribute__ ((__packed__)){
+            uint8_t sign              :  2;   /* [1: 0]      for sign*/
+            uint8_t encrypted         :  2;   /* [3: 2]      for encrypt */
+            uint8_t encrypt_type      :  2;   /* [5: 4]      for encrypt*/
+            uint8_t keySel            :  2;   /* [7: 6]      for key sel in boot interface*/
+            uint8_t unknown[15];
+        };
+    };
 } boot_info_t;
 
 typedef struct {
