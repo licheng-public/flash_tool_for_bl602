@@ -26,147 +26,178 @@
 
 #include "uart.h"
 #include "comm.h"
+#include "common_share.h"
+#include "packet_comm.h"
 
-#define COMM_OK		0
-#define COMM_FAIL	1
-
-/*
- * UART hand shake between the host and the target
- */
-uint32_t hand_shake(int uart_fd, uint32_t baud_rate)
-{
-    char read_buf[256];
-	int i = 0;
-    ssize_t bytes_n;
-	uint32_t ret_status = COMM_OK;
-	uint8_t stream_hfive[512];
-#if 1
-	ssize_t left;
-	ssize_t write_n;
-
-	/* 
-	 * approximate the number of bytes of 0x55 to send in 5 mseconds
-	 * using the current baud rate with 8N1
-	 */
-	bytes_n = 5 * (baud_rate * 10 / 1000 / 8 + 1);
-
-	if (bytes_n <= sizeof stream_hfive) {
-		left = sizeof stream_hfive;
-	}
-	else {
-		left = bytes_n;
-	}
-	for (i = 0; i < sizeof left; i++) {
-		stream_hfive[i] = 0x55;
-	}
-
-	while (left > 0) {
-		write_n = write(uart_fd, stream_hfive, left);
-		if (write_n <= 0) {
-			fprintf(stderr, "error in write\n");
-			ret_status = COMM_FAIL;
-			goto fail;
-		}
-		left = bytes_n - write_n;
-	};
-#else
-	uint64_t elapse = 0;
-	/* send a stream of 0x55 to device for 5 msec */
-	gettimeofday(&start_time, NULL);
-	do {
-		write(uart_fd, stream_hfive, 1);
-		gettimeofday(&curr_time, NULL);
-		elapse = (curr_time.tv_sec - start_time.tv_sec) * 1000 * 1000 +
-			(curr_time.tv_usec - start_time.tv_usec);
-	} while(elapse < 5 * 10000);
-#endif
-
-	/* now read from the device */
-    while (1) {
-        usleep(100000); // Sleep for 100ms
-        memset(read_buf, 0, sizeof(read_buf));
-        bytes_n = read(uart_fd, read_buf, sizeof(read_buf));
-        if (bytes_n > 0) {
-            printf("Received (%ld bytes): %s\n", bytes_n, read_buf);
-			/* check the result: "OK", "FL" */
-			if (read_buf[0] == 'O' && read_buf[1] == 'K') {
-				printf("hand shake succeeds\n");
-				break;
-			}
-			else if (read_buf[0] == 'F' && read_buf[1] == 'L') {
-				fprintf(stderr, "fail in comm\n");
-				ret_status = COMM_FAIL;
-				break;
-			}
-			else {
-				fprintf(stderr, "Unknown result\n");
-				ret_status = COMM_FAIL;
-				break;
-			}
-        } /* bytes_n */
-    }
-
-fail:
-	return ret_status; /* zero is OK */
-}
+int boot_rom_stage = 1;
 
 void print_help(const char *p_app_name)
 {
-	printf("USAGE: %s uart_port baud_rate\n", p_app_name);
+    printf("USAGE: %s --uart uart_device --rate baud_rate --partition part1.bin part2.bin"
+            "  --fw firmware.bin --dtb ro_param.dtb --eflash eflash_loader\n", p_app_name);
 	return;
 }
 
+/*
+ * The usage 
+ * ./flash --uart uart_device --rate baud_rate --partition part1.bin part2.bin
+ *   --fw firmware.bin --dtb ro_param.dtb
+ */
 int main(int argc, char *argv[])
 {
-	const char *p_uart_port;
 	int ret_code;
-    int uart_fd;
+    int uart_fd = -1;
 	uint32_t baud_rate;
+    boot_info_t boot_info;
+    int i = 1;
+    int j = 0;
+	char *p_uart_port;
+    char *fw_file = NULL;
+    char *eflash_loader_file = NULL;
+    char *dtb_file = NULL;
+    char *p_part[4] = {NULL, NULL, NULL, NULL};
 
-	if (argc < 3) {
+	if (argc < 11) {
+        fprintf(stderr, "ERROR: missing operand\n");
 		print_help(argv[0]);
 		return -1;
 	}
-	p_uart_port = argv[1];
-	baud_rate = atoi(argv[2]);
+
+    i = 1;
+#define CHECK_BOUND {\
+    if (++i >= argc || (argv[i][0] == '-' && argv[i][1] == '-')) { \
+        fprintf(stderr, "ERROR: missing an argument for %s\n", argv[i-1]);\
+        goto fail2;\
+    }\
+}
+
+    while (i < argc) {
+        if (strcmp(argv[i], "--uart") == 0) {
+            CHECK_BOUND;
+            p_uart_port = argv[i++];
+        } else if (strcmp(argv[i], "--rate") == 0) {
+            CHECK_BOUND;
+	        baud_rate = atoi(argv[i++]);
+        } else if (strcmp(argv[i], "--fw") == 0) {
+            CHECK_BOUND;
+            fw_file = argv[i++];
+        } else if (strcmp(argv[i], "--eflash") == 0) {
+            CHECK_BOUND;
+            eflash_loader_file = argv[i++];
+        } else if (strcmp(argv[i], "--dtb") == 0) {
+            CHECK_BOUND;
+            dtb_file = argv[i++];
+        } else if (strcmp(argv[i], "--partition") == 0) {
+            j = i + 1;
+            while (j < argc && argv[j][0] != '-' && argv[j][1] != '=') {
+                if ( j - i - 1 < ARRAY_SIZE(p_part)) {
+                    p_part[j -i -1] = argv[j];
+                }
+                j++;
+            }
+            i = j;
+        } else {
+            fprintf(stderr, "ERROR: unkwown options [%s]\n", argv[i]);
+            return -2;
+        }
+    }
+
+    /* check arguments */
+    if (p_uart_port == NULL || dtb_file == NULL || fw_file == NULL
+            || p_part[0] == NULL || eflash_loader_file == NULL) {
+        fprintf(stderr, "ERROR: missing arguments for flashing\n");
+        goto fail2;
+    }
 
 	uart_fd = uart_open(p_uart_port, baud_rate);
 	if (uart_fd < 0) {
-		fprintf(stderr, "failed to open UART\n");
+		fprintf(stderr, "ERROR: failed to open UART\n");
 		return -2;
 	}
 
-	if (COMM_OK != hand_shake(uart_fd, baud_rate)) {
-		fprintf(stderr, "failed in talk to BL602\n");
-		ret_code = -3;
-		goto fail;
-	}
+#define CHECK_ERROR(ret_code)  {\
+    if (0 != (ret_code)) {      \
+        goto fail;              \
+    }                           \
+}
+
+	ret_code = hand_shake(uart_fd, baud_rate);
+    CHECK_ERROR(ret_code);
 
 	/* connection is established now */
-	(void) usleep(10 * 1000);
+	(void) usleep(20 * 1000);
 	/* read_boot_info */
-    ret_code = request_boot_info(uart_fd);
-    if (0 != ret_code) {
-        goto fail;
+    ret_code = request_boot_info(uart_fd, &boot_info);
+    CHECK_ERROR(ret_code);
+
+    /*
+     * Before flashing the images, eflash image has to program to device. eflash is the
+     * program executed on device to handle all flash operations, including erase, program,
+     * etc.
+     *
+     * Though the protocol doc says eflash is not signed and encrypted in Chapter 2, the
+     * below source code is still programed based on protocol in Chapter 1 for completenecess.
+     *
+     * Also note: this boot header might be different from the one generated from
+     * efuse_bootheader_cfg.conf, just in case you are curious.
+     */
+	/* load_boot_header */
+	(void) usleep(20 * 1000);
+    ret_code = load_boot_header(uart_fd, eflash_loader_file);
+    CHECK_ERROR(ret_code);
+
+    if (boot_info.sign != 0) {
+	    /* if signed, load_public_key */
+	    (void) usleep(20 * 1000);
+        ret_code = load_pub_key(uart_fd);
+        CHECK_ERROR(ret_code);
+
+	    /* if signed, load signature */
+	    (void) usleep(20 * 1000);
+        ret_code = load_signature(uart_fd);
+        CHECK_ERROR(ret_code);
     }
 
-	/* load_boot_header */
-
-	/* if signed, load_public_key */
-
-	/* if signed, load signature */
-
-	/* if encrypted, load AES IV */
+    if (boot_info.encrypted) {
+	    /* if encrypted, load AES IV */
+	    (void) usleep(20 * 1000);
+        ret_code = load_aes_iv(uart_fd);
+        CHECK_ERROR(ret_code);
+    }
 
 	/* load segment header */
+    (void) usleep(20 * 1000);
+    ret_code = load_segment_header(uart_fd, eflash_loader_file);
+    CHECK_ERROR(ret_code);
+
 	/* load segment data */
+    (void) usleep(20 * 1000);
+    ret_code = load_segment_data(uart_fd, eflash_loader_file);
+    CHECK_ERROR(ret_code);
 
 	/* check image */
+    (void) usleep(20 * 1000);
+    ret_code = check_image(uart_fd);
+    CHECK_ERROR(ret_code);
 
 	/* run image */
+    (void) usleep(20 * 1000);
+    ret_code = run_image(uart_fd);
+    CHECK_ERROR(ret_code);
+    /*
+     * At this point, the eflash image should be running, and ready to serve the flashing
+     * jobs. Shake hands to make sure it is OK.
+     */
+    (void) usleep(20 * 1000);
+    ret_code = hand_shake(uart_fd, baud_rate);
+    CHECK_ERROR(ret_code);
 
-    // Close UART
+    /* TODO: fill the rest */
+
 fail:
+    /* Close UART */
     uart_close(uart_fd);
+
+fail2:
 	return ret_code;
 }

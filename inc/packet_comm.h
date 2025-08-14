@@ -33,7 +33,7 @@ typedef enum {
     COMMAND_SIGNATURE   = 0x14,
     COMMAND_AES_IV      = 0x16,
     COMMAND_SEG_HDR     = 0x17,
-    COMMAND_SIG_DATA    = 0x18,
+    COMMAND_SEG_DATA    = 0x18,
     COMMAND_IMG_CHECK   = 0x19,
     COMMAND_IMG_RUN     = 0x1A,
 
@@ -107,12 +107,13 @@ typedef struct {
 
 /* segment data */
 /* 
- * 4096 is the limitation of protocol frame size.
+ * BL602_ISP_protocol says: 4096 is the limitation of protocol frame size.
  * If larger, send multiple data to send
+ * NOTE: test shows that above is not true.
  */
 typedef struct {
     packet_hdr_t seg_data_hdr;
-    uint8_t seg_data[4096];
+    uint8_t seg_data[2048];
 } segment_data_pkt_t;
 
 /* image check */
@@ -127,17 +128,31 @@ typedef struct {
 
 typedef struct {
     uint32_t boot_rom_ver;
-    uint8_t opt_info[16];
+    union {
+        uint8_t opt_info[16];
+        /* XXX: faked, not published by Buffalolab */
+        struct __attribute__ ((__packed__)){
+            uint8_t sign              :  2;   /* [1: 0]      for sign*/
+            uint8_t encrypted         :  2;   /* [3: 2]      for encrypt */
+            uint8_t encrypt_type      :  2;   /* [5: 4]      for encrypt*/
+            uint8_t keySel            :  2;   /* [7: 6]      for key sel in boot interface*/
+            uint8_t unknown[15];
+        };
+    };
 } boot_info_t;
 
-typedef struct {
-    uint8_t result[2]; /* 'O''K' or 'F''L' */
-    union __attribute__ ((__packed__)){
+typedef struct __attribute__ ((__packed__)){
+    union {
         struct {
+            uint8_t result[2]; /* 'O''K' or 'F''L' */
+        };
+        struct {
+            uint8_t result_e[2]; /* place holder. */
             uint8_t err_lsb;
             uint8_t err_msb;
         };
         struct {
+            uint8_t result_i[2]; /* place holder. */
             uint8_t len_lsb;
             uint8_t len_msb;
             boot_info_t boot_info;

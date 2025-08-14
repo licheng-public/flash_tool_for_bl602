@@ -67,7 +67,7 @@ int uart_open(const char *p_uart_port, uint32_t baud_rate)
     // Open the UART device file
     uart_fd = open(p_uart_port, O_RDWR | O_NOCTTY | O_NDELAY);
     if (uart_fd == -1) {
-        fprintf(stderr, "Unable to open %s", p_uart_port);
+        fprintf(stderr, "ERROR: Unable to open %s", p_uart_port);
         return -1;
     }
 
@@ -77,7 +77,7 @@ int uart_open(const char *p_uart_port, uint32_t baud_rate)
     // Set baud rate
 	ret_status = get_baud_rate(baud_rate, &speed);
 	if (ret_status < 0) {
-		fprintf(stderr, "baud_rate not supported \n");
+		fprintf(stderr, "ERROR: baud_rate not supported \n");
 #if 0
 		struct termios2 tio;
 		/*
