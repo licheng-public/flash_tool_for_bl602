@@ -1,0 +1,4 @@
+break break_point
+set print pretty
+run
+p /x  bhc_bin.bhc

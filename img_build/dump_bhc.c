@@ -178,10 +178,33 @@ struct Boot_Header_Config{
 };
 /* port end */
 
-struct Boot_Header_Config bhc;
-int main(int argc, char *argv[]) {
-    memset(&bhc, 0, sizeof bhc);
+union {
+    uint8_t bin[sizeof(struct Boot_Header_Config)];
+    struct Boot_Header_Config bhc;
+} bhc_bin;
 
-    printf("%d\n", sizeof bhc);
+void break_point(void) {
+}
+
+struct Boot_Header_Config g_bhc;
+int main(int argc, char *argv[]) {
+    FILE *p_file = NULL;
+
+    if (argc < 2) {
+        fprintf(stderr, "ERROR: nothing to dump\n");
+        return -1;
+    }
+    p_file = fopen(argv[1], "r");
+    if (p_file == NULL) {
+    }
+
+    memset(&g_bhc, 0, sizeof g_bhc);
+
+    printf("%d\n", sizeof g_bhc);
+    fread(&bhc_bin, sizeof bhc_bin, 1, p_file);
+
+    fclose(p_file);
+
+    break_point();
     return 0;
 }

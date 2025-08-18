@@ -2,7 +2,7 @@ CC := gcc
 CFLAGS := -Wall -g
 INCLUDE := -I../inc/ -I./
 CFLAGS += $(INCLUDE)
-SRCS := comm.c uart.c flash.c
+SRCS := comm.c uart.c flash.c ../common/crypto.c
 OBJS := $(SRCS:.c=.o)
 TARGET := flash
 

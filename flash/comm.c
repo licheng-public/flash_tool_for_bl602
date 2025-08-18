@@ -247,6 +247,42 @@ fail:
 }
 
 /*
+ * read file into a allocated buffer
+ */
+int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data) {
+    int ret_code = 0;
+    struct stat f_stat;
+    uint8_t *p_local = NULL;
+    FILE *f = NULL;
+
+    if (p_file_name == NULL) {
+        return -1;
+    }
+    ret_code = stat(p_file_name, &f_stat);
+    if (ret_code < 0) {
+        return -2;
+    }
+    p_local = (uint8_t *)malloc(f_stat.st_size);
+    if (p_local == NULL) {
+        return -3;
+    }
+    memset(p_local, 0, f_stat.st_size);
+
+    f = fopen(p_file_name, "r");
+    if (f == NULL) {
+        return -4;
+    }
+    /* fread should return 1, skip check ret value intentionally below */
+    fread((void *)p_local, f_stat.st_size, 1, f);
+
+    *p_buf = p_local;
+    *p_sz_data = f_stat.st_size;
+
+    fclose(f);
+    return 0;
+}
+
+/*
  * UART hand shake between the host and the target
  */
 int hand_shake(int uart_fd, uint32_t baud_rate)
@@ -360,7 +396,7 @@ fail:
     return ret_code;
 }
 
-/* 
+/*
  * eflash image format:
  *      Boot_Header_Config (176 bytes)
  *      segment_header_t   (16 bytes)
@@ -540,6 +576,142 @@ int run_image(int uart_fd) {
     }
 
     return ret_code;
+}
+
+int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
+    int ret_code = 0;
+    uint32_t end_addr = start_addr + len;
+    erase_pkt_t erase_pkt;
+
+    memset(&erase_pkt, 0, sizeof(erase_pkt));
+    init_header(COMMAND_ERASE_FLASH, sizeof(erase_pkt.start_addr)
+            + sizeof(erase_pkt.end_addr), &erase_pkt.erase_hdr);
+    erase_pkt.start_addr = htole32(start_addr);
+    erase_pkt.end_addr = htole32(end_addr);
+
+    write(uart_fd, &erase_pkt, sizeof erase_pkt);
+
+    ret_code = read_check_response(uart_fd, NULL);
+    if (ret_code == 0) {
+        fprintf(stdout, "SUCCEED: erase storage [0x%08x, 0x%08x]\n", start_addr,
+                end_addr);
+    } else {
+        fprintf(stderr, "ERROR: erase storga [0x%08x, 0x%08x]\n", start_addr,
+                end_addr);
+    }
+
+    return ret_code;
+}
+
+int flash_data(int uart_fd, uint8_t *p_data, uint32_t len_data, uint32_t target_addr) {
+    int ret_code = 0;
+    int i = 0;
+    int j = 0;
+    uint8_t *p_curr = p_data;
+    uint8_t *p_char = NULL;
+    uint32_t len_to_send = 0;
+    flash_data_pkt_t *p_pkt = NULL;
+
+    while (p_curr < p_data + len_data) {
+        p_pkt = (flash_data_pkt_t *) malloc(sizeof(*p_pkt));
+        if (p_pkt == NULL) {
+            return -1;
+        }
+
+        if (len_data <= sizeof(p_pkt->data)) {
+            len_to_send = len_data;
+        } else {
+            len_to_send = sizeof(p_pkt->data);
+        }
+
+        memset((void *)p_pkt, 9, sizeof(*p_pkt));
+        init_header(COMMAND_FLASH_DATA, len_to_send, &(p_pkt->flash_data_hdr));
+        p_pkt->addr = htole32(target_addr);
+        memcpy(p_pkt->data, p_curr, len_to_send);
+        /* fill crc */
+        p_char = (uint8_t *) &p_pkt->len_lsb;
+        for (i = 0; i < len_to_send + sizeof(p_pkt->addr) + 2; i++) {
+            p_pkt->crc08 += *p_char;
+            p_char++;
+        }
+        write(uart_fd, p_pkt, len_to_send + sizeof(p_pkt->addr)
+                + sizeof(p_pkt->flash_data_hdr));
+
+        /* check response */
+        ret_code = read_check_response(uart_fd, NULL);
+        if (ret_code == 0) {
+            fprintf(stdout, "succeed: flash (%d) bytes data[%d] to "
+                    "addr 0x%08x\n", len_to_send, j++, target_addr);
+        } else {
+            fprintf(stderr, "ERROR: fail to flash data\n");
+            goto fail;
+        }
+
+        /* move to the next frame */
+        p_curr = p_curr + len_to_send;
+        target_addr = target_addr + len_to_send;
+        len_data = len_data - len_to_send;
+
+        free(p_pkt);
+        p_pkt = NULL;
+    }
+
+fail:
+    if (p_pkt != NULL) {
+        free(p_pkt);
+    }
+    return ret_code;
+}
+
+int notify_flash_done(int uart_fd) {
+    int ret_code = 0;
+    flash_done_pkt_t flash_done_pkt;
+
+    memset(&flash_done_pkt, 0, sizeof (flash_done_pkt));
+    init_header(COMMAND_PROG_OK, 0, &flash_done_pkt.flash_done_hdr);
+
+    write(uart_fd, &flash_done_pkt, sizeof flash_done_pkt);
+
+    ret_code = read_check_response(uart_fd, NULL);
+    if (ret_code == 0) {
+        fprintf(stdout, "SUCCEED: ack flash ok\n");
+    } else {
+        fprintf(stderr, "ERROR: nack flash \n" );
+    }
+
+    return ret_code;
+}
+
+int send_sha256(int uart_fd, uint32_t *sha256) {
+    int ret_code = 0;
+    sha256_pkt_t sha256_pkt;
+    bl_resp_t bl_resp;
+
+    memset((void *)&sha256_pkt, 0, sizeof(sha256_pkt));
+    init_header(COMMAND_SHA_256, sizeof(sha256_pkt.start_addr)
+            + sizeof(sha256_pkt.size), &sha256_pkt.sha256_hdr);
+
+    write(uart_fd, &sha256_pkt, sizeof sha256_pkt);
+
+    memset(&bl_resp, 0, sizeof bl_resp);
+    ret_code = read_check_response(uart_fd, &bl_resp);
+    if (ret_code == 0) {
+        /* compare the sha256 from device with our local */
+        ret_code = memcmp(sha256, bl_resp.sha256, sizeof(bl_resp.sha256));
+        if (ret_code == 0) {
+            fprintf(stdout, "SUCCEED: SHA256 verificatin pass\n");
+        } else {
+            fprintf(stderr, "ERROR: SHA256 verificatin fail\n");
+        }
+    } else {
+        fprintf(stderr, "ERROR: fail in getting response for SHA256 \n" );
+    }
+
+    return ret_code;
+}
+
+int send_finish(int uart_fd, uint32_t baud_rate) {
+    return hand_shake(uart_fd, baud_rate);
 }
 
 int load_pub_key(int uart_fd) {

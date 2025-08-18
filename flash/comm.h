@@ -23,6 +23,9 @@
 
 #include "packet_comm.h"
 
+/*XXX: move read_to_buf out of common.* */
+int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data);
+
 int hand_shake(int uart_fd, uint32_t baud_rate);
 
 int load_boot_header(int uart_fd, char *eflash_file_name);
@@ -42,5 +45,15 @@ int load_segment_data(int uart_fd, char *eflash_file_name);
 int check_image(int uart_fd);
 
 int run_image(int uart_fd);
+
+int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len);
+
+int flash_data(int uart_fd, uint8_t *data, uint32_t len_data, uint32_t target_addr);
+
+int notify_flash_done(int uart_fd);
+
+int send_sha256(int uart_fd, uint32_t *sha256);
+
+int send_finish(int uart_fd);
 
 #endif /* _COMM_H */

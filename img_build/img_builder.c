@@ -66,57 +66,57 @@ struct offset_table_t {
     uint32_t offset;
     uint32_t size; /* in bytes */
 } offset_table [] = {
-    SFC_TABLE_E(ioMode,             io_mode,                SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(cReadSupport,       cont_read_support,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(clkDelay,           sfctrl_clk_delay,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(clkInvert,          sfctrl_clk_invert,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(resetEnCmd,         reset_en_cmd,           SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(resetCmd,           reset_cmd,              SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(resetCreadCmd,      exit_contread_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(resetCreadCmdSize,  exit_contread_cmd_Size, SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(jedecIdCmd,         iedecid_cmd,            SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(jedecIdCmdDmyClk,   jedecid_cmd_dmy_clk,    SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiJedecIdCmd,      qpi_kedecid_cmd,        SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiJedecIdCmdDmyClk, qpi_jedecid_dmy_clk,   SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(sectorSize,         sector_size,            SPI_Flash_Cfg_Type),          
-    SFC_TABLE_E(mid,                mfg_id,                 SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(pageSize,           page_size,              SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(chipEraseCmd,       chip_erase_cmd,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(sectorEraseCmd,     sector_erase_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(blk32EraseCmd,      blk32k_erase_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(blk64EraseCmd,      blk64k_erase_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(writeEnableCmd,     write_enable_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(pageProgramCmd,     page_prog_cmd,          SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpageProgramCmd,    qpage_prog_cmd,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qppAddrMode,        qual_page_prog_addr_mode, SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(fastReadCmd,        fast_read_cmd,          SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(frDmyClk,           fast_read_dmy_clk,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiFastReadCmd,     qpi_fast_read_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiFrDmyClk,        qpi_fast_read_dmy_clk,  SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(fastReadDoCmd,      fast_read_do_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(frDoDmyClk,         fast_read_do_dmy_clk,   SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(fastReadDioCmd,     fast_read_dio_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(frDioDmyClk,        fast_read_dio_dmy_clk,  SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(fastReadQoCmd,      fast_read_qo_cmd,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(frQoDmyClk,         fast_read_qo_dmy_clk,   SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(fastReadQioCmd,     fast_read_qio_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(frQioDmyClk,        fast_read_qio_dmy_clk,  SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiFastReadQioCmd,  qpi_fast_read_qio_cmd,  SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiFrQioDmyClk,     qpi_fast_read_qio_dmy_clk, SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qpiPageProgramCmd,  qpi_page_prog_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(writeVregEnableCmd, write_vreg_enable_cmd,  SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(wrEnableIndex,      wel_reg_index,          SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qeIndex,            qe_reg_index,           SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(busyIndex,          busy_reg_index,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(wrEnableBit,        wel_bit_pos,            SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qeBit,              qe_bit_pos,             SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(busyBit,            busy_bit_pos,           SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(wrEnableWriteRegLen, wel_reg_write_len,     SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(wrEnableReadRegLen, wel_reg_read_len,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qeWriteRegLen,      qe_reg_write_len,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(qeReadRegLen,       qe_reg_read_len,        SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(releasePowerDown,   release_power_down,     SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(busyReadRegLen,     busy_reg_read_len,      SPI_Flash_Cfg_Type), 
+    SFC_TABLE_E(ioMode,             io_mode,                SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(cReadSupport,       cont_read_support,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(clkDelay,           sfctrl_clk_delay,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(clkInvert,          sfctrl_clk_invert,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(resetEnCmd,         reset_en_cmd,           SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(resetCmd,           reset_cmd,              SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(resetCreadCmd,      exit_contread_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(resetCreadCmdSize,  exit_contread_cmd_Size, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(jedecIdCmd,         jedecid_cmd,            SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(jedecIdCmdDmyClk,   jedecid_cmd_dmy_clk,    SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiJedecIdCmd,      qpi_jedecid_cmd,        SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiJedecIdCmdDmyClk, qpi_jedecid_dmy_clk,   SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(sectorSize,         sector_size,            SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(mid,                mfg_id,                 SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(pageSize,           page_size,              SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(chipEraseCmd,       chip_erase_cmd,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(sectorEraseCmd,     sector_erase_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(blk32EraseCmd,      blk32k_erase_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(blk64EraseCmd,      blk64k_erase_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(writeEnableCmd,     write_enable_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(pageProgramCmd,     page_prog_cmd,          SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpageProgramCmd,    qpage_prog_cmd,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qppAddrMode,        qual_page_prog_addr_mode, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(fastReadCmd,        fast_read_cmd,          SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(frDmyClk,           fast_read_dmy_clk,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiFastReadCmd,     qpi_fast_read_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiFrDmyClk,        qpi_fast_read_dmy_clk,  SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(fastReadDoCmd,      fast_read_do_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(frDoDmyClk,         fast_read_do_dmy_clk,   SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(fastReadDioCmd,     fast_read_dio_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(frDioDmyClk,        fast_read_dio_dmy_clk,  SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(fastReadQoCmd,      fast_read_qo_cmd,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(frQoDmyClk,         fast_read_qo_dmy_clk,   SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(fastReadQioCmd,     fast_read_qio_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(frQioDmyClk,        fast_read_qio_dmy_clk,  SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiFastReadQioCmd,  qpi_fast_read_qio_cmd,  SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiFrQioDmyClk,     qpi_fast_read_qio_dmy_clk, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qpiPageProgramCmd,  qpi_page_prog_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(writeVregEnableCmd, write_vreg_enable_cmd,  SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(wrEnableIndex,      wel_reg_index,          SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qeIndex,            qe_reg_index,           SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(busyIndex,          busy_reg_index,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(wrEnableBit,        wel_bit_pos,            SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qeBit,              qe_bit_pos,             SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(busyBit,            busy_bit_pos,           SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(wrEnableWriteRegLen, wel_reg_write_len,     SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(wrEnableReadRegLen, wel_reg_read_len,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qeWriteRegLen,      qe_reg_write_len,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(qeReadRegLen,       qe_reg_read_len,        SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(releasePowerDown,   release_power_down,     SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(busyReadRegLen,     busy_reg_read_len,      SPI_Flash_Cfg_Type),
     /* outliers: readRegCmd[4], and writeRegCmd[4] */
     {"readRegCmd[0]", "reg_read_cmd0", offsetof(SPI_Flash_Cfg_Type, readRegCmd[0])
         + offsetof(Boot_Flash_Config, cfg)
@@ -150,48 +150,48 @@ struct offset_table_t {
         + offsetof(Boot_Flash_Config, cfg)
         + offsetof(Boot_Header_Config, flashCfg),
             SSIZE_A(SPI_Flash_Cfg_Type,writeRegCmd)},
-    SFC_TABLE_E(enterQpi,           enter_qpi_cmd,          SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(exitQpi,            exit_qpi_cmd,           SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(cReadMode,          cont_read_mode,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(cRExit,             cont_read_exit_mode,    SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(burstWrapCmd,       burst_wrap_cmd,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(burstWrapCmdDmyClk, burst_wrap_dmy_clk,     SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(burstWrapDataMode,  burst_wrap_data_mode,   SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(burstWrapData,      burst_wrap_code,        SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(deBurstWrapCmd,     de_burst_wrap_cmd,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(deBurstWrapCmdDmyClk, de_burst_wrap_cmd_dmy_clk, SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(deBurstWrapDataMode, de_burst_wrap_code_mode, SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(deBurstWrapData,    de_burst_wrap_code,     SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(timeEsector,        sector_erase_time,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(timeE32k,           blk32k_erase_time,      SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(timeE64k,           blk64_erase_time,       SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(timePagePgm,        page_prog_time,         SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(timeCe,             chip_erase_time,        SPI_Flash_Cfg_Type), 
-    SFC_TABLE_E(pdDelay,            power_down_delay,       SPI_Flash_Cfg_Type), 
+    SFC_TABLE_E(enterQpi,           enter_qpi_cmd,          SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(exitQpi,            exit_qpi_cmd,           SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(cReadMode,          cont_read_code,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(cRExit,             cont_read_exit_code,    SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(burstWrapCmd,       burst_wrap_cmd,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(burstWrapCmdDmyClk, burst_wrap_dmy_clk,     SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(burstWrapDataMode,  burst_wrap_data_mode,   SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(burstWrapData,      burst_wrap_code,        SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(deBurstWrapCmd,     de_burst_wrap_cmd,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(deBurstWrapCmdDmyClk, de_burst_wrap_cmd_dmy_clk, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(deBurstWrapDataMode, de_burst_wrap_code_mode, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(deBurstWrapData,    de_burst_wrap_code,     SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(timeEsector,        sector_erase_time,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(timeE32k,           blk32k_erase_time,      SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(timeE64k,           blk64k_erase_time,       SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(timePagePgm,        page_prog_time,         SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(timeCe,             chip_erase_time,        SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(pdDelay,            power_down_delay,       SPI_Flash_Cfg_Type),
     SFC_TABLE_E(qeData,             qe_data,                SPI_Flash_Cfg_Type),
     /* BFC_TABLE_E(crc32,              flashcfg_crc32,         Boot_Flash_Config), */
     BFC_TABLE_E(magicCode,          flashcfg_magic_code,    Boot_Flash_Config),
     // boot_sys_clock_cfg
-    BSCC_TABLE_E(xtalType,          xtal_type,              Boot_Sys_Clk_Config), 
-    BSCC_TABLE_E(pllClk,            pll_clk,                Boot_Sys_Clk_Config), 
-    BSCC_TABLE_E(hclkDiv,           hclk_div,               Boot_Sys_Clk_Config), 
-    BSCC_TABLE_E(bclkDiv,           bclk_div,               Boot_Sys_Clk_Config), 
-    BSCC_TABLE_E(flashClkType,      flash_clk_type,         Boot_Sys_Clk_Config), 
-    BSCC_TABLE_E(flashClkDiv,       flash_clk_div,          Boot_Sys_Clk_Config), 
+    BSCC_TABLE_E(xtalType,          xtal_type,              Boot_Sys_Clk_Config),
+    BSCC_TABLE_E(pllClk,            pll_clk,                Boot_Sys_Clk_Config),
+    BSCC_TABLE_E(hclkDiv,           hclk_div,               Boot_Sys_Clk_Config),
+    BSCC_TABLE_E(bclkDiv,           bclk_div,               Boot_Sys_Clk_Config),
+    BSCC_TABLE_E(flashClkType,      flash_clk_type,         Boot_Sys_Clk_Config),
+    BSCC_TABLE_E(flashClkDiv,       flash_clk_div,          Boot_Sys_Clk_Config),
     // boot_clk_config
-    BCC_TABLE_E(magicCode,          clkcfg_magic_code,      Boot_Clk_Config), 
-    BCC_TABLE_E(crc32,              clkcfg_crc32,           Boot_Clk_Config), 
+    BCC_TABLE_E(magicCode,          clkcfg_magic_code,      Boot_Clk_Config),
+    BCC_TABLE_E(crc32,              clkcfg_crc32,           Boot_Clk_Config),
     // boot_header_config
-    BHC_TABLE_E(magicCode,          magic_code,             Boot_Header_Config), 
-    BHC_TABLE_E(rivison,            revision,               Boot_Header_Config), 
-    BHC_TABLE_E(imgSegmentInfo.segmentCnt,  segment_cnt,    Boot_Header_Config), 
-    BHC_TABLE_E(imgSegmentInfo.imgLen,      img_len,        Boot_Header_Config), 
-    BHC_TABLE_E(bootEntry,                  bootentry,      Boot_Header_Config), 
-    BHC_TABLE_E(imgStart.ramAddr,           img_start,      Boot_Header_Config), 
-    BHC_TABLE_E(imgStart.flashOffset,       flash_offset,   Boot_Header_Config), 
+    BHC_TABLE_E(magicCode,          magic_code,             Boot_Header_Config),
+    BHC_TABLE_E(rivison,            revision,               Boot_Header_Config),
+    BHC_TABLE_E(imgSegmentInfo.segmentCnt,  segment_cnt,    Boot_Header_Config),
+    BHC_TABLE_E(imgSegmentInfo.imgLen,      img_len,        Boot_Header_Config),
+    BHC_TABLE_E(bootEntry,                  bootentry,      Boot_Header_Config),
+    BHC_TABLE_E(imgStart.ramAddr,           img_start,      Boot_Header_Config),
+    BHC_TABLE_E(imgStart.flashOffset,       flash_offset,   Boot_Header_Config),
     /*
-    BHC_TABLE_E(hash[BFLB_BOOT2_HASH_SIZE], hash,           Boot_Header_Config), 
-    BHC_TABLE_E(crc32,                      crc32,          Boot_Header_Config), 
+    BHC_TABLE_E(hash[BFLB_BOOT2_HASH_SIZE], hash,           Boot_Header_Config),
+    BHC_TABLE_E(crc32,                      crc32,          Boot_Header_Config),
     */
 };
 
@@ -212,7 +212,7 @@ struct offset_table_wt_bits_t {
      {"cacheEnable",    "cache_enable",     1,   9,     OFFSET_BOOTCFG},
      {"notLoadInBoot",  "notload_in_bootrom", 1, 10,    OFFSET_BOOTCFG},
      {"aesRegionLock",  "aes_region_lock",  1,   11,    OFFSET_BOOTCFG},
-     {"cacheWayDisable", "ceche_way_disable", 4, 12,    OFFSET_BOOTCFG},
+     {"cacheWayDisable", "cache_way_disable", 4, 12,    OFFSET_BOOTCFG},
      {"crcIgnore",      "crc_ignore",       1,  16,     OFFSET_BOOTCFG},
      {"hashIgnore",     "hash_ignore",      1,  17,     OFFSET_BOOTCFG},
      {"haltCPU1",       "halt_cpu1",        1,  18,     OFFSET_BOOTCFG},
@@ -224,7 +224,7 @@ static void print_offset(void) {
     uint32_t i = 0;
 
     for (i = 0; i < ARRAY_SIZE(offset_table); i++) {
-        printf("%64s \t%u \t%u\n", 
+        printf("%64s \t%u \t%u\n",
                 offset_table[i].alias,
                 offset_table[i].offset, offset_table[i].size);
     }
@@ -271,7 +271,7 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
     int ret_code = 0;
     int i = 0;
     FILE *p_file = fopen(p_cfg_file, "r");
-    char buf[512];
+    char buf[256];
     char *p_val = NULL;
     bool in_efuse_cfg = false;
 
@@ -319,8 +319,8 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
                 if (strncmp(buf, offset_table[i].alias,
                             strlen(offset_table[i].alias)) == 0) {
                     /* value */
-                    uint32_t val = strtoul(p_val, NULL, 16);
-                    memcpy((void *)((char *)&p_bhc + offset_table[i].offset), &val,
+                    uint32_t val = strtoul(p_val, NULL, 0);
+                    memcpy((void *)((char *)p_bhc + offset_table[i].offset), &val,
                             offset_table[i].size);
                     found = true;
                     break;
@@ -334,7 +334,7 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
                     if (strncmp(buf, offset_table_wt[i].alias,
                                 strlen(offset_table_wt[i].alias)) == 0) {
                         /* value */
-                        uint32_t val = strtoul(p_val, NULL, 16);
+                        uint32_t val = strtoul(p_val, NULL, 0);
                         val = val & (~(0x1 << offset_table_wt[i].bit_len));
                         val = val << offset_table_wt[i].pos;
                         p_bhc->bootCfg.wval = p_bhc->bootCfg.wval | val;
@@ -346,8 +346,10 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
 
             if (!found) {
                 fprintf(stderr, "WARNING: unknown field %s\n", buf);
+                memset(buf, 0, sizeof buf);
                 continue;
             }
+            memset(buf, 0, sizeof buf);
         } /* is_efuse_cfg */
     } /* while(fgets) */
 
@@ -426,7 +428,7 @@ int main(int argc, char *argv[])
         char *p_buf = NULL;
         FILE *p_file_bin = fopen(bin_filename, "r");
 
-        /* 
+        /*
          * establish a big buffer to accormadate the size of space from
          * 0 to offset, followed by the original image
          */
