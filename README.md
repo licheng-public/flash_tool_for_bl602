@@ -50,6 +50,7 @@ Generate the flash image
     bl_factory_params_IoTKitA_40M.dts, '/include/ "bl602_base.dtsi";' need to
     remove as no such files exist. In fact, the dts file can be compiled into
     dtb with device tree compiler (dtc) after the following patch:
+```
         diff --git a/bl602/device_tree/bl_factory_params_IoTKitA_40M.dts b/bl602/device_tree/bl_factory_params_IoTKitA_40M.dts
         index 4f02725..ddd5473 100644
         --- a/bl602/device_tree/bl_factory_params_IoTKitA_40M.dts
@@ -81,7 +82,7 @@ Generate the flash image
         -            hbn_use = "disable";
                  };
              };
-
+```
 
 Flash the images
 ----------------
