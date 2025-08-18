@@ -36,6 +36,10 @@ typedef enum {
     COMMAND_SEG_DATA    = 0x18,
     COMMAND_IMG_CHECK   = 0x19,
     COMMAND_IMG_RUN     = 0x1A,
+    COMMAND_ERASE_FLASH = 0x30,
+    COMMAND_FLASH_DATA  = 0x31,
+    COMMAND_PROG_OK     = 0x3A,
+    COMMAND_SHA_256     = 0x2D
 
 } COMMAND_ID;
 
@@ -126,6 +130,40 @@ typedef struct {
     packet_hdr_t img_run_hdr;
 } image_run_pkt_t;
 
+/* erase command */
+typedef struct {
+    packet_hdr_t erase_hdr;
+    uint32_t start_addr;
+    uint32_t end_addr;
+} erase_pkt_t;
+
+/* program data */
+typedef struct {
+    union {
+        packet_hdr_t flash_data_hdr;
+        struct {
+            uint8_t cmd_id;
+            uint8_t crc08;
+            uint8_t len_lsb;
+            uint8_t len_msb;
+        };
+    };
+    uint32_t addr;
+    uint8_t data[8 * 1024];
+} flash_data_pkt_t;
+
+/* flash done */
+typedef struct {
+    packet_hdr_t flash_done_hdr;
+} flash_done_pkt_t;
+
+/* send SHA256 */
+typedef struct {
+    packet_hdr_t sha256_hdr;
+    uint32_t start_addr;
+    uint32_t size;
+} sha256_pkt_t;
+
 typedef struct {
     uint32_t boot_rom_ver;
     union {
@@ -156,6 +194,12 @@ typedef struct __attribute__ ((__packed__)){
             uint8_t len_lsb;
             uint8_t len_msb;
             boot_info_t boot_info;
+        };
+        struct {
+            uint8_t result_s[2]; /* place holder */
+            uint8_t len_lsb_s;
+            uint8_t len_msb_s;
+            uint8_t sha256[32];
         };
     };
 } bl_resp_t;

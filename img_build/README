@@ -1,0 +1,15 @@
+img_build is used to pack a binary with boot header config.
+It is used for boot2image and fw image. The final layout of
+the image is as follows:
+
+ /-------------------\
+ |Boot_ Header_Config|   176 bytes
+ |-------------------|
+ |..... 0xFF.........|
+ |......0xFF.........|
+ |-------------------| offset
+ |   src binary      |
+ \-------------------/
+
+The usage is:
+$ ./img_gen -i boot_cfg_file -b src_bin -o output_bin -s offset

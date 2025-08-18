@@ -26,6 +26,7 @@
 
 #include "uart.h"
 #include "comm.h"
+#include "crypto.h"
 #include "common_share.h"
 #include "packet_comm.h"
 
@@ -34,14 +35,16 @@ int boot_rom_stage = 1;
 void print_help(const char *p_app_name)
 {
     printf("USAGE: %s --uart uart_device --rate baud_rate --partition part1.bin part2.bin"
-            "  --fw firmware.bin --dtb ro_param.dtb --eflash eflash_loader\n", p_app_name);
+            "  --fw firmware.bin --dtb ro_param.dtb --eflash eflash_loader"
+            "  --boot2 boot2image.bin\n", p_app_name);
 	return;
 }
 
 /*
- * The usage 
+ * The usage
  * ./flash --uart uart_device --rate baud_rate --partition part1.bin part2.bin
- *   --fw firmware.bin --dtb ro_param.dtb
+ *   --fw firmware.bin --dtb ro_param.dtb --eflash eflash_loader.bin
+ *   --boot2 boot2image.bin
  */
 int main(int argc, char *argv[])
 {
@@ -53,9 +56,27 @@ int main(int argc, char *argv[])
     int j = 0;
 	char *p_uart_port;
     char *fw_file = NULL;
-    char *eflash_loader_file = NULL;
     char *dtb_file = NULL;
+    char *boot2_file = NULL;
     char *p_part[4] = {NULL, NULL, NULL, NULL};
+    char *eflash_loader_file = NULL;
+    /*
+     * for looping, build the list of files to be flashed
+     * fw + dtb + boot2 + the maximum number of partitions
+     * TODO: no hardcode! get the dst address from partition!!
+     */
+    struct {
+        uint32_t dst;
+        char *p_file_name;
+    } p_file_list[4 + 3] = {
+        {0x10000, NULL}, /* fw image */
+        {0x1F8000, NULL}, /* dtb */
+        {0x00000, NULL}, /* boot2 image */
+        {0xE000, NULL}, /* partition_0 */
+        {0xF000, NULL}, /* partition_1 */
+        {0x0000, NULL}, /* partition_2 */
+        {0x0000, NULL}, /* partition_3 */
+    };
 
 	if (argc < 11) {
         fprintf(stderr, "ERROR: missing operand\n");
@@ -81,17 +102,24 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[i], "--fw") == 0) {
             CHECK_BOUND;
             fw_file = argv[i++];
+            p_file_list[0].p_file_name = fw_file;
+        } else if (strcmp(argv[i], "--boot2") == 0) {
+            CHECK_BOUND;
+            boot2_file = argv[i++];
+            p_file_list[2].p_file_name = boot2_file;
         } else if (strcmp(argv[i], "--eflash") == 0) {
             CHECK_BOUND;
             eflash_loader_file = argv[i++];
         } else if (strcmp(argv[i], "--dtb") == 0) {
             CHECK_BOUND;
             dtb_file = argv[i++];
+            p_file_list[1].p_file_name = dtb_file;
         } else if (strcmp(argv[i], "--partition") == 0) {
             j = i + 1;
             while (j < argc && argv[j][0] != '-' && argv[j][1] != '=') {
                 if ( j - i - 1 < ARRAY_SIZE(p_part)) {
                     p_part[j -i -1] = argv[j];
+                    p_file_list[j - i + 2].p_file_name = p_part[j - i - 1];
                 }
                 j++;
             }
@@ -104,7 +132,8 @@ int main(int argc, char *argv[])
 
     /* check arguments */
     if (p_uart_port == NULL || dtb_file == NULL || fw_file == NULL
-            || p_part[0] == NULL || eflash_loader_file == NULL) {
+            || p_part[0] == NULL || eflash_loader_file == NULL
+            || boot2_file == NULL) {
         fprintf(stderr, "ERROR: missing arguments for flashing\n");
         goto fail2;
     }
@@ -120,7 +149,6 @@ int main(int argc, char *argv[])
         goto fail;              \
     }                           \
 }
-
 	ret_code = hand_shake(uart_fd, baud_rate);
     CHECK_ERROR(ret_code);
 
@@ -192,7 +220,52 @@ int main(int argc, char *argv[])
     ret_code = hand_shake(uart_fd, baud_rate);
     CHECK_ERROR(ret_code);
 
+#define CHECK_ERROR_P(ret_code)  {\
+    if (0 != (ret_code)) {      \
+        goto error_p;           \
+    }                           \
+}
     /* TODO: fill the rest */
+    boot_rom_stage = 0; /* flash stage */
+    for (i = 0; i < ARRAY_SIZE(p_file_list) && ret_code == 0; i++) {
+        uint8_t *p_buf = NULL;
+        uint32_t sha_256[8] = {0};
+        uint32_t sz_curr = 0;
+
+        if (p_file_list[i].p_file_name == NULL) {
+            break;
+        }
+        /* read_to_buf, allocate enough memory, and read file into the buf */
+        ret_code = read_to_buf(p_file_list[i].p_file_name, &p_buf, &sz_curr);
+        CHECK_ERROR_P(ret_code);
+
+        calc_sha256(p_buf, sz_curr, sha_256);
+
+        (void) usleep(20 * 1000);
+        ret_code = erase_storage(uart_fd, p_file_list[i].dst, sz_curr);
+        CHECK_ERROR_P(ret_code);
+
+        (void) usleep(20 * 1000);
+        ret_code = flash_data(uart_fd, p_buf, sz_curr, p_file_list[i].dst);
+        CHECK_ERROR_P(ret_code);
+
+        (void) usleep(20 * 1000);
+        ret_code = notify_flash_done(uart_fd);
+        CHECK_ERROR_P(ret_code);
+
+        (void) usleep(20 * 1000);
+        ret_code = send_sha256(uart_fd, sha_256);
+        CHECK_ERROR_P(ret_code);
+
+error_p:
+        free(p_buf);
+        p_buf = NULL;
+    }
+
+    if (ret_code == 0) {
+        ret_code = send_finish(uart_fd);
+        fprintf(stderr, "SUCCEED: flash completed\n");
+    }
 
 fail:
     /* Close UART */
