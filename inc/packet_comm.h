@@ -39,7 +39,7 @@ typedef enum {
     COMMAND_ERASE_FLASH = 0x30,
     COMMAND_FLASH_DATA  = 0x31,
     COMMAND_PROG_OK     = 0x3A,
-    COMMAND_SHA_256     = 0x2D
+    COMMAND_SHA_256     = 0x3D
 
 } COMMAND_ID;
 
@@ -110,7 +110,7 @@ typedef struct {
 } segment_header_pkt_t;
 
 /* segment data */
-/* 
+/*
  * BL602_ISP_protocol says: 4096 is the limitation of protocol frame size.
  * If larger, send multiple data to send
  * NOTE: test shows that above is not true.
@@ -199,7 +199,7 @@ typedef struct __attribute__ ((__packed__)){
             uint8_t result_s[2]; /* place holder */
             uint8_t len_lsb_s;
             uint8_t len_msb_s;
-            uint8_t sha256[32];
+            uint32_t sha256[8];
         };
     };
 } bl_resp_t;

@@ -66,7 +66,7 @@ void calc_sha256(uint8_t *p_msg, uint32_t len, uint32_t *p_sha) {
     uint32_t byte_n;
     uint8_t *p_new = NULL;
     // first 32 bits of the fractional parts of the cube roots of the first 64 primes
-	const static uint32_t K[64] = {
+    const static uint32_t K[64] = {
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
         0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
         0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -123,7 +123,7 @@ void calc_sha256(uint8_t *p_msg, uint32_t len, uint32_t *p_sha) {
     p_m_block = (struct m_block_t *)(void *)&p_new[0];
 
     /* step 3: --- calculate hash --- */
-    N = byte_n / 64; 
+    N = byte_n / 64;
     for (i = 0; i < N; i++) {
         uint32_t a, b, c, d, e, f, g, h;
 
@@ -191,26 +191,26 @@ void calc_sha256(uint8_t *p_msg, uint32_t len, uint32_t *p_sha) {
 uint32_t calc_crc32(const char *src, uint32_t sz)
 {
     char ch;
-	uint32_t crc = ~0;
-	uint32_t i = 0;
+    uint32_t crc = ~0;
+    uint32_t i = 0;
     uint32_t j = 0;
     uint32_t b = 0;
-	
+
     printf("crc = 0x%x\n", crc);
-	for(i = 0; i < sz; i++) {
-		ch = src[i];
-		for(j = 0; j < 8; j++) {
-			b = (ch ^ crc) & 1;
-			crc >>= 1;
-			if (b) {
+    for(i = 0; i < sz; i++) {
+        ch = src[i];
+        for(j = 0; j < 8; j++) {
+            b = (ch ^ crc) & 1;
+            crc >>= 1;
+            if (b) {
                 crc=crc^0xEDB88320;
             }
-			ch >>= 1;
-		}
-	}
+            ch >>= 1;
+        }
+    }
 
     printf("crc = %x\n", ~crc);
-	return ~crc;
+    return ~crc;
 }
 #if TEST_MAIN
 static uint8_t huge_a[1000000];

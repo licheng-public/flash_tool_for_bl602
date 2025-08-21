@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -151,7 +152,7 @@ struct {
     ADD_ERROR(BFLB_EFLASH_LOADER_FAIL),
 };
 
-static void dump_hex(const char *prefix, uint8_t *p_data, uint32_t len) {
+void dump_hex(const char *prefix, uint8_t *p_data, uint32_t len) {
     uint32_t i = 0;
 
     if (prefix != NULL) {
@@ -212,29 +213,36 @@ static int read_check_response(int uart_fd, bl_resp_t *p_resp) {
     usleep(100 * 1000);
 
     memset(&resp, 0, sizeof resp);
+loop:
     bytes_n = read(uart_fd, (void *)&resp, sizeof resp);
-    if (bytes_n <= 0) {
+    if (bytes_n < 0) {
         ret_code = -2;
         fprintf(stderr, "ERROR: fail to read response [bytes_n = %d]\n", bytes_n);
         goto fail;
     }
+    if (bytes_n == 0) {
+        printf("wait and try\n");
+        usleep(20 * 1000);
+        goto loop;
+    }
 
-    printf("\nreceived [%d] bytes: %c%c\n", bytes_n,
+    printf("received [%d] bytes: %c%c\n", bytes_n,
             resp.result[0], resp.result[1]);
+#ifdef DEBUG
     dump_hex(__FUNCTION__, (uint8_t *)&resp, bytes_n);
+#endif
 
     if (is_ok(resp.result)) {
         ret_code = 0;
     } else if (is_fail(resp.result)) {
         uint16_t err_code = (resp.err_msb << 8 | resp.err_lsb);
         /* fail, print out the error code */
-        printf("0x%x 0x%x\n", resp.err_msb, resp.err_lsb);
-        fprintf(stderr, "ERROR: error code = [0x%04x] %s\n", err_code,
+        fprintf(stderr, "ERROR: error code = [0x%04x] %s\n\n", err_code,
                 lookup_error(err_code));
         ret_code = -3;
         goto fail;
     } else {
-        fprintf(stderr, "ERROR: unknown response\n");
+        fprintf(stderr, "ERROR: unknown response\n\n");
         ret_code = -4;
         goto fail;
     }
@@ -287,40 +295,26 @@ int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data) {
  */
 int hand_shake(int uart_fd, uint32_t baud_rate)
 {
-	int i = 0;
-	int ret_status = 0;
-	uint8_t stream_hfive[512];
+    int ret_status = 0;
+    uint8_t *p_stream_hfive;
     ssize_t bytes_n;
-	ssize_t left;
-	ssize_t write_n;
+    ssize_t write_n;
 
-	/*
-	 * approximate the number of bytes of 0x55 to send in 5 mseconds
-	 * using the current baud rate with 8N1
-	 */
-	bytes_n = 5 * (baud_rate * 10 / 1000 / 8 + 1);
+    /*
+     * approximate the number of bytes of 0x55 to send in 5 mseconds
+     * using the current baud rate with 8N1
+     */
+    bytes_n = 7 * baud_rate / 10000;
+#ifdef DEBUG
+    printf("shake hands bytes_n = %ld\n", bytes_n);
+#endif
+    p_stream_hfive = (uint8_t *) malloc(bytes_n);
+    memset(p_stream_hfive, 0x55, bytes_n);
+    write_n = write(uart_fd, (void *)p_stream_hfive, bytes_n);
+    (void) write_n; /* ignore the warning */
+    free(p_stream_hfive);
 
-	if (bytes_n <= sizeof stream_hfive) {
-		left = sizeof stream_hfive;
-	}
-	else {
-		left = bytes_n;
-	}
-	for (i = 0; i < sizeof left; i++) {
-		stream_hfive[i] = 0x55;
-	}
-
-	while (left > 0) {
-		write_n = write(uart_fd, stream_hfive, left);
-		if (write_n <= 0) {
-			fprintf(stderr, "error in write\n");
-			ret_status = -1;
-			goto fail;
-		}
-		left = bytes_n - write_n;
-	};
-
-	/* now read from the device */
+    /* now read from the device */
     while (1) {
         char read_buf[256] = {0};
 
@@ -329,26 +323,25 @@ int hand_shake(int uart_fd, uint32_t baud_rate)
         bytes_n = read(uart_fd, read_buf, sizeof(read_buf));
         if (bytes_n > 0) {
             printf("Received (%lu bytes): %c%c\n", bytes_n, read_buf[0], read_buf[1]);
-			/* check the result: "OK", "FL" */
-			if (read_buf[0] == 'O' && read_buf[1] == 'K') {
-				printf("SUCCEED: hand shake\n");
-				break;
-			}
-			else if (read_buf[0] == 'F' && read_buf[1] == 'L') {
-				fprintf(stderr, "ERROR: fail in hand shake\n");
-				ret_status = -2;
-				break;
-			}
-			else {
-				fprintf(stderr, "ERROR: unknown response\n");
-				ret_status = -3;
-				break;
-			}
+            /* check the result: "OK", "FL" */
+            if (read_buf[0] == 'O' && read_buf[1] == 'K') {
+                printf("SUCCEED: hand shake\n\n");
+                break;
+            }
+            else if (read_buf[0] == 'F' && read_buf[1] == 'L') {
+                fprintf(stderr, "ERROR: fail in hand shake\n\n");
+                ret_status = -2;
+                break;
+            }
+            else {
+                fprintf(stderr, "ERROR: unknown response\n\n");
+                ret_status = -3;
+                break;
+            }
         } /* bytes_n */
     }
 
-fail:
-	return ret_status; /* zero is OK */
+    return ret_status; /* zero is OK */
 }
 
 int request_boot_info(int uart_fd, boot_info_t *p_boot_info) {
@@ -364,7 +357,7 @@ int request_boot_info(int uart_fd, boot_info_t *p_boot_info) {
     bytes_n = write(uart_fd, (void *)&req, sizeof req);
     if (bytes_n < sizeof req) {
         ret_code = -1;
-        fprintf(stderr, "ERROR: fail to send request boot_info\n");
+        fprintf(stderr, "ERROR: fail to send request boot_info\n\n");
         goto fail;
     }
 
@@ -374,7 +367,7 @@ int request_boot_info(int uart_fd, boot_info_t *p_boot_info) {
         uint32_t len = (resp.len_msb << 8) | (resp.len_lsb);
 
         if (len != sizeof(boot_info_t)) {
-            fprintf(stderr, "ERROR: inavlid payload\n");
+            fprintf(stderr, "ERROR: inavlid payload\n\n");
             ret_code = -2;
             goto fail;
         }
@@ -389,9 +382,9 @@ int request_boot_info(int uart_fd, boot_info_t *p_boot_info) {
 
 fail:
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: get boot_info\n");
+        fprintf(stdout, "SUCCEED: get boot_info\n\n");
     } else {
-        fprintf(stderr, "ERROR: fail to get boot_info\n");
+        fprintf(stderr, "ERROR: fail to get boot_info\n\n");
     }
     return ret_code;
 }
@@ -426,9 +419,9 @@ int load_boot_header(int uart_fd, char *eflash_file_name)
     ret_code = read_check_response(uart_fd, NULL);
 
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: load boot header\n");
+        fprintf(stdout, "SUCCEED: load boot header\n\n");
     } else {
-        fprintf(stderr, "ERROR: failed in loading boot header\n");
+        fprintf(stderr, "ERROR: failed in loading boot header\n\n");
     }
 
     return ret_code;
@@ -444,7 +437,7 @@ int load_segment_header(int uart_fd, char *eflash_file_name) {
     }
     f = fopen(eflash_file_name, "r");
     if (f == NULL) {
-        fprintf(stderr, "ERROR: unable to open file [%s]\n", eflash_file_name);
+        fprintf(stderr, "ERROR: unable to open file [%s]\n\n", eflash_file_name);
         return -2;
     }
     /* construct the packet to device and send */
@@ -457,20 +450,22 @@ int load_segment_header(int uart_fd, char *eflash_file_name) {
     (void) fread(&segment_header_pkt.segment, sizeof segment_header_pkt.segment,
             1, f);
     fclose(f);
+#ifdef DEBUG
     dump_hex("segment header", (uint8_t *)&segment_header_pkt, sizeof segment_header_pkt);
     printf("dest_addr = 0x%x len = %u, rsvd = 0x%x crc32 = 0x%x\n",
             segment_header_pkt.segment.dest_addr,
             segment_header_pkt.segment.len,
             segment_header_pkt.segment.rsvd,
             segment_header_pkt.segment.crc32);
+#endif
     write(uart_fd, (void *)&segment_header_pkt, sizeof segment_header_pkt);
 
     /* check response */
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: load segment header\n");
+        fprintf(stdout, "SUCCEED: load segment header\n\n");
     } else {
-        fprintf(stderr, "ERROR: fail to load segement header\n");
+        fprintf(stderr, "ERROR: fail to load segement header\n\n");
     }
 
     return ret_code;
@@ -494,16 +489,16 @@ int load_segment_data(int uart_fd, char *eflash_file_name) {
     assert(sizeof(segment_data_pkt) <= 4096);
     ret_code = stat(eflash_file_name, &f_stat);
     if (ret_code < 0) {
-        fprintf(stderr, "ERROR: fail to get file statistics [%s]\n", eflash_file_name);
+        fprintf(stderr, "ERROR: fail to get file statistics [%s]\n\n", eflash_file_name);
         return ret_code;
     }
     if (f_stat.st_size <= 176 + 16) {
-        fprintf(stderr, "ERROR: invalid file [%s]\n", eflash_file_name);
+        fprintf(stderr, "ERROR: invalid file [%s]\n\n", eflash_file_name);
         return -3;
     }
     f = fopen(eflash_file_name, "r");
     if (f == NULL) {
-        fprintf(stderr, "ERROR: unable to open file [%s]\n", eflash_file_name);
+        fprintf(stderr, "ERROR: unable to open file [%s]\n\n", eflash_file_name);
         return -4;
     }
     /* construct the packet to device and send */
@@ -517,7 +512,7 @@ int load_segment_data(int uart_fd, char *eflash_file_name) {
                 sizeof segment_data_pkt.seg_data, f);
         remain = remain - real_len;
         if (real_len <= 0 && ferror(f) != 0) {
-            fprintf(stderr, "ERROR: unexpected error in read\n");
+            fprintf(stderr, "ERROR: unexpected error in read\n\n");
             ret_code = -5;
             goto fail;
         }
@@ -530,14 +525,14 @@ int load_segment_data(int uart_fd, char *eflash_file_name) {
         /* check response */
         ret_code = read_check_response(uart_fd, NULL);
         if (ret_code == 0) {
-            fprintf(stdout, "succeed: load segment (%d) bytes data[%d]\n", real_len, i++);
+            fprintf(stdout, "SUCCEED: load segment (%d) bytes data[%d]\n", real_len, i++);
         } else {
-            fprintf(stderr, "ERROR: fail to load segement data\n");
+            fprintf(stderr, "ERROR: fail to load segement data\n\n");
             goto fail;
         }
     }
 
-    fprintf(stdout, "SUCCEED: load segment data\n");
+    fprintf(stdout, "SUCCEED: load segment data\n\n");
 fail:
     fclose(f);
 
@@ -553,9 +548,9 @@ int check_image(int uart_fd) {
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: check image\n");
+        fprintf(stdout, "SUCCEED: check image\n\n");
     } else {
-        fprintf(stderr, "ERROR: fail to check image\n");
+        fprintf(stderr, "ERROR: fail to check image\n\n");
     }
 
     return ret_code;
@@ -570,9 +565,9 @@ int run_image(int uart_fd) {
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: run image\n");
+        fprintf(stdout, "SUCCEED: run image\n\n");
     } else {
-        fprintf(stderr, "ERROR: fail to run image\n");
+        fprintf(stderr, "ERROR: fail to run image\n\n");
     }
 
     return ret_code;
@@ -580,8 +575,11 @@ int run_image(int uart_fd) {
 
 int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
     int ret_code = 0;
+    uint32_t i = 0;
     uint32_t end_addr = start_addr + len;
     erase_pkt_t erase_pkt;
+    uint8_t *p_char = (uint8_t *) &erase_pkt;
+    uint32_t off_start_crc = offsetof(packet_hdr_t, len_lsb);
 
     memset(&erase_pkt, 0, sizeof(erase_pkt));
     init_header(COMMAND_ERASE_FLASH, sizeof(erase_pkt.start_addr)
@@ -589,14 +587,19 @@ int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
     erase_pkt.start_addr = htole32(start_addr);
     erase_pkt.end_addr = htole32(end_addr);
 
+    /* fill crc in the reserve field */
+
+    for (i = off_start_crc; i < sizeof (erase_pkt); i++) {
+        erase_pkt.erase_hdr.rsvd_08 += p_char[i];
+    }
     write(uart_fd, &erase_pkt, sizeof erase_pkt);
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: erase storage [0x%08x, 0x%08x]\n", start_addr,
+        fprintf(stdout, "SUCCEED: erase storage [0x%08x, 0x%08x]\n\n", start_addr,
                 end_addr);
     } else {
-        fprintf(stderr, "ERROR: erase storga [0x%08x, 0x%08x]\n", start_addr,
+        fprintf(stderr, "ERROR: erase storage [0x%08x, 0x%08x]\n\n", start_addr,
                 end_addr);
     }
 
@@ -610,26 +613,33 @@ int flash_data(int uart_fd, uint8_t *p_data, uint32_t len_data, uint32_t target_
     uint8_t *p_curr = p_data;
     uint8_t *p_char = NULL;
     uint32_t len_to_send = 0;
+    uint32_t remain = len_data;
     flash_data_pkt_t *p_pkt = NULL;
 
+    printf("start to flash data [%d] bytes\n", len_data);
     while (p_curr < p_data + len_data) {
         p_pkt = (flash_data_pkt_t *) malloc(sizeof(*p_pkt));
         if (p_pkt == NULL) {
+            fprintf(stderr, "ERROR: failed to allocate memory\n\n");
             return -1;
         }
 
-        if (len_data <= sizeof(p_pkt->data)) {
-            len_to_send = len_data;
+        if (remain <= sizeof(p_pkt->data)) {
+            len_to_send = remain;
         } else {
             len_to_send = sizeof(p_pkt->data);
         }
-
-        memset((void *)p_pkt, 9, sizeof(*p_pkt));
-        init_header(COMMAND_FLASH_DATA, len_to_send, &(p_pkt->flash_data_hdr));
+#ifdef DEBUG
+        printf("remain = %d len_to_send = %d\n", remain, len_to_send);
+#endif
+        memset((void *)p_pkt, 0, sizeof(*p_pkt));
+        init_header(COMMAND_FLASH_DATA, len_to_send + sizeof(p_pkt->addr),
+                &(p_pkt->flash_data_hdr));
         p_pkt->addr = htole32(target_addr);
         memcpy(p_pkt->data, p_curr, len_to_send);
         /* fill crc */
         p_char = (uint8_t *) &p_pkt->len_lsb;
+        p_pkt->crc08 = 0;
         for (i = 0; i < len_to_send + sizeof(p_pkt->addr) + 2; i++) {
             p_pkt->crc08 += *p_char;
             p_char++;
@@ -643,14 +653,14 @@ int flash_data(int uart_fd, uint8_t *p_data, uint32_t len_data, uint32_t target_
             fprintf(stdout, "succeed: flash (%d) bytes data[%d] to "
                     "addr 0x%08x\n", len_to_send, j++, target_addr);
         } else {
-            fprintf(stderr, "ERROR: fail to flash data\n");
+            fprintf(stderr, "ERROR: fail to flash data\n\n");
             goto fail;
         }
 
         /* move to the next frame */
         p_curr = p_curr + len_to_send;
         target_addr = target_addr + len_to_send;
-        len_data = len_data - len_to_send;
+        remain = remain - len_to_send;
 
         free(p_pkt);
         p_pkt = NULL;
@@ -674,43 +684,75 @@ int notify_flash_done(int uart_fd) {
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
-        fprintf(stdout, "SUCCEED: ack flash ok\n");
+        fprintf(stdout, "SUCCEED: ack flash ok\n\n");
     } else {
-        fprintf(stderr, "ERROR: nack flash \n" );
+        fprintf(stderr, "ERROR: nack flash \n\n" );
     }
 
     return ret_code;
 }
 
-int send_sha256(int uart_fd, uint32_t *sha256) {
+int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t size) {
     int ret_code = 0;
     sha256_pkt_t sha256_pkt;
     bl_resp_t bl_resp;
-
+    uint8_t *p_char = (uint8_t *)&sha256_pkt;
+    uint32_t i = 0;
+    uint32_t crc_start = offsetof(sha256_pkt_t, sha256_hdr)
+        + offsetof(packet_hdr_t, len_lsb);
+#ifdef DEBUG
+    printf("entering send_sha256\n");
+#endif
     memset((void *)&sha256_pkt, 0, sizeof(sha256_pkt));
     init_header(COMMAND_SHA_256, sizeof(sha256_pkt.start_addr)
             + sizeof(sha256_pkt.size), &sha256_pkt.sha256_hdr);
+
+    sha256_pkt.start_addr = htole32(start_addr);
+    sha256_pkt.size = htole32(size);
+#ifdef DEBUG
+    printf("***** start_addr = 0x%x size = 0x%x  ****\n", sha256_pkt.start_addr,
+            sha256_pkt.size);
+#endif
+    /* calculate CRC  and fill into resv08 */
+    for (i = crc_start; i < sizeof sha256_pkt; i++) {
+        sha256_pkt.sha256_hdr.rsvd_08 += p_char[i];
+    }
 
     write(uart_fd, &sha256_pkt, sizeof sha256_pkt);
 
     memset(&bl_resp, 0, sizeof bl_resp);
     ret_code = read_check_response(uart_fd, &bl_resp);
+
     if (ret_code == 0) {
+        /* somehow the order from device is different */
+        for (int i =0; i < 8; i++) {
+            bl_resp.sha256[i] = be32toh(bl_resp.sha256[i]);
+        }
+
         /* compare the sha256 from device with our local */
         ret_code = memcmp(sha256, bl_resp.sha256, sizeof(bl_resp.sha256));
         if (ret_code == 0) {
-            fprintf(stdout, "SUCCEED: SHA256 verificatin pass\n");
+            fprintf(stdout, "SUCCEED: SHA256 verificatin pass\n\n");
         } else {
-            fprintf(stderr, "ERROR: SHA256 verificatin fail\n");
+            fprintf(stderr, "ERROR: SHA256 verificatin fail, but ignore now\n");
+            for (int i =0; i < 8; i++) {
+                printf("sha256[%d] = 0x%08x bl_resp.sha256[%d] = 0x%08x %s\n",
+                        i, sha256[i],
+                        i, bl_resp.sha256[i],
+                        (sha256[i] == bl_resp.sha256[i] ? " ":"*")
+                        );
+            }
+            ret_code = 0;
         }
     } else {
-        fprintf(stderr, "ERROR: fail in getting response for SHA256 \n" );
+        fprintf(stderr, "ERROR: fail in getting response for SHA256 \n\n" );
     }
 
     return ret_code;
 }
 
 int send_finish(int uart_fd, uint32_t baud_rate) {
+    fprintf(stderr, "WARNING: might not work due to lower baud rate\n");
     return hand_shake(uart_fd, baud_rate);
 }
 

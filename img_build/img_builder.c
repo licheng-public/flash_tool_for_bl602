@@ -73,7 +73,7 @@ struct offset_table_t {
     SFC_TABLE_E(resetEnCmd,         reset_en_cmd,           SPI_Flash_Cfg_Type),
     SFC_TABLE_E(resetCmd,           reset_cmd,              SPI_Flash_Cfg_Type),
     SFC_TABLE_E(resetCreadCmd,      exit_contread_cmd,      SPI_Flash_Cfg_Type),
-    SFC_TABLE_E(resetCreadCmdSize,  exit_contread_cmd_Size, SPI_Flash_Cfg_Type),
+    SFC_TABLE_E(resetCreadCmdSize,  exit_contread_cmd_size, SPI_Flash_Cfg_Type),
     SFC_TABLE_E(jedecIdCmd,         jedecid_cmd,            SPI_Flash_Cfg_Type),
     SFC_TABLE_E(jedecIdCmdDmyClk,   jedecid_cmd_dmy_clk,    SPI_Flash_Cfg_Type),
     SFC_TABLE_E(qpiJedecIdCmd,      qpi_jedecid_cmd,        SPI_Flash_Cfg_Type),
@@ -262,11 +262,57 @@ static bool is_empty_line(char *buf) {
 }
 
 /*
+ * get token and value pointer from a string.
+ *
+ * if the string is without =, the pointer to the first non-space
+ * is returned. The token would be *p_token. *p_val = NULL
+ * if the string is with '=', the poiner to the first non-space
+ * is returned. The token would be *p_token, and *p_val points to
+ * the first character after '='.
+ *
+ * NOTE: p_src string is MODIFIED
+ */
+static void get_token_and_value(char *p_src, char **p_token, char **p_val) {
+    char *p_tmp = p_src;
+
+    *p_token = NULL;
+    *p_val = NULL;
+
+    while (isspace(*p_tmp) && *p_tmp != '\0') {
+        p_tmp++;
+    }
+    *p_token = p_tmp;
+    if (*p_tmp == '\0') {
+        *p_val = NULL;
+        return;
+    }
+    /* now the case is "abc    " or "abc   = 3   " or "=" */
+    p_tmp = strchr(*p_token, '=');
+    if (p_tmp == NULL) {
+        /* standardlone token, like the line with "abc\n" */
+        *p_val = NULL;
+        p_tmp = *p_token + strlen(*p_token) - 1; /* point to the last char */
+        while (isspace(*p_tmp)) {
+            *p_tmp = '\0';
+            p_tmp--;
+        }
+    } else {
+        *p_val = p_tmp + 1;
+        do {
+            *p_tmp = '\0';
+            p_tmp--;
+        } while (isspace(*p_tmp) && p_tmp > (*p_token));
+    }
+
+    return;
+}
+
+/*
  * The customized parser to handle the bhc configuration
  * in toml format. Intended to fullfill the need without dependency.
  */
 static int parse_boot_header_cfg(const char *p_cfg_file,
-    Boot_Header_Config *p_bhc)
+    Boot_Header_Config *p_bhc, uint32_t img_len)
 {
     int ret_code = 0;
     int i = 0;
@@ -283,30 +329,24 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
 
     memset(buf, 0, sizeof buf);
     while (NULL != fgets(buf, sizeof buf, p_file)) {
+        char *p_token = NULL;
+
         if (buf[0] == '#' || is_empty_line(buf)) {
             /* ignore comment */
             memset(buf, 0, sizeof buf);
             continue;
         }
-        if (strncmp(buf, "[EFUSE_CFG]", strlen("[EFUSE_CFG]")) == 0) {
+        /* get pointer to token and value */
+        get_token_and_value(buf, &p_token, &p_val);
+        if (strcmp(p_token, "[EFUSE_CFG]") == 0) {
             in_efuse_cfg = true;
             memset(buf, 0, sizeof buf);
             continue;
-        } else if (strncmp(buf, "[BOOTHEADER_CFG]", strlen("[BOOTHEADER_CFG]")) == 0) {
+        } else if (strcmp(p_token, "[BOOTHEADER_CFG]") == 0) {
             in_efuse_cfg = false;
             memset(buf, 0, sizeof buf);
             continue;
         }
-
-        p_val = strchr(buf, '=');
-        if (p_val == NULL) {
-            /* ignore */
-            fprintf(stderr, "ERROR: [%s] not a 'name = value' pair\n", buf);
-            ret_code = -2;
-            goto fail;
-        }
-        *p_val = '\0';
-        p_val++;
 
         if (in_efuse_cfg) {
             /* bypass efuse config */
@@ -316,8 +356,7 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
             bool found = false;
             int o_cnt = ARRAY_SIZE(offset_table);
             for (i = 0; i < o_cnt; i++) {
-                if (strncmp(buf, offset_table[i].alias,
-                            strlen(offset_table[i].alias)) == 0) {
+                if (strcmp(p_token, offset_table[i].alias) == 0) {
                     /* value */
                     uint32_t val = strtoul(p_val, NULL, 0);
                     memcpy((void *)((char *)p_bhc + offset_table[i].offset), &val,
@@ -331,8 +370,7 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
             if (!found) {
                 int o_cnt = ARRAY_SIZE(offset_table_wt);
                 for (i = 0; i < o_cnt; i++) {
-                    if (strncmp(buf, offset_table_wt[i].alias,
-                                strlen(offset_table_wt[i].alias)) == 0) {
+                    if (strcmp(p_token, offset_table_wt[i].alias) == 0) {
                         /* value */
                         uint32_t val = strtoul(p_val, NULL, 0);
                         val = val & (~(0x1 << offset_table_wt[i].bit_len));
@@ -345,13 +383,16 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
             } /* !found */
 
             if (!found) {
-                fprintf(stderr, "WARNING: unknown field %s\n", buf);
+                fprintf(stderr, "WARNING: unknown field %s\n", p_token);
                 memset(buf, 0, sizeof buf);
                 continue;
             }
             memset(buf, 0, sizeof buf);
         } /* is_efuse_cfg */
     } /* while(fgets) */
+
+    /* overwrite the imgLen field with the real */
+    p_bhc->imgSegmentInfo.imgLen = img_len;
 
     /* fill crc fields in the order */
     p_bhc->flashCfg.crc32 = calc_crc32((char *)&p_bhc->flashCfg.cfg,
@@ -360,7 +401,6 @@ static int parse_boot_header_cfg(const char *p_cfg_file,
             offsetof(Boot_Clk_Config, crc32) - offsetof(Boot_Clk_Config, cfg));
     p_bhc->crc32 = calc_crc32((char *)p_bhc, offsetof(Boot_Header_Config, crc32));
 
-fail:
     fclose(p_file);
     return ret_code;
 }
@@ -421,8 +461,7 @@ int main(int argc, char *argv[])
     }
 
     memset(&bhc, 0, sizeof bhc);
-    ret_code = parse_boot_header_cfg(cfg_filename, &bhc);
-    if (ret_code == 0) {
+
         uint32_t len;
         struct stat bin_stats;
         char *p_buf = NULL;
@@ -448,11 +487,13 @@ int main(int argc, char *argv[])
         memset(p_buf + offset, 0, len);
         fread(p_buf + offset, bin_stats.st_size, 1, p_file_bin);
         fclose(p_file_bin);
-
         /* calculate hash of the bin, and fill in bhc
          */
         calc_sha256((uint8_t *)p_buf + offset, len, (uint32_t *)&bhc.hash[0]);
 
+
+    ret_code = parse_boot_header_cfg(cfg_filename, &bhc, len);
+    if (ret_code == 0) {
         /* now pre-fill 0xFF and overwrite with Boot_Header_Config in buffer*/
         memset(p_buf, 0xFF, offset);
         memcpy(p_buf, &bhc, sizeof bhc);
