@@ -62,6 +62,6 @@ board into recovery mode. The internally flashing process is as follows:
     Send the sequence of 0x5555555...like shake hands
     read response
 12./ If the response from step 11 indicates 'O''K', the flash is completed
-successfully.    
+successfully.
 
 If any response indicates the error, it should abort the flashing.

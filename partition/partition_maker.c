@@ -70,34 +70,35 @@ static bool is_empty_line(char *buf) {
 
 /*
  * https://zlib.net/crc_v3.txt
- * for fun: 
+ * for fun:
  * https://stackoverflow.com/questions/2587766/how-is-a-crc32-checksum-calculated
  */
 static uint32_t calc_crc32(const char *src, uint32_t sz)
 {
     char ch;
-	uint32_t crc = ~0;
-	uint32_t i = 0;
+    uint32_t crc = ~0;
+    uint32_t i = 0;
     uint32_t j = 0;
     uint32_t b = 0;
-	
+
     printf("crc = 0x%x\n", crc);
-	for(i = 0; i < sz; i++) {
-		ch = src[i];
-		for(j = 0; j < 8; j++) {
-			b = (ch ^ crc) & 1;
-			crc >>= 1;
-			if (b) {
+    for(i = 0; i < sz; i++) {
+        ch = src[i];
+        for(j = 0; j < 8; j++) {
+            b = (ch ^ crc) & 1;
+            crc >>= 1;
+            if (b) {
                 crc=crc^0xEDB88320;
             }
-			ch >>= 1;
-		}
-	}
+            ch >>= 1;
+        }
+    }
 
     printf("crc = %x\n", ~crc);
-	return ~crc;
+    return ~crc;
 }
-/* 
+
+/*
  * The customized parser to handle the partition configuration
  * in toml format. Intended to fullfill the need without dependency.
  */
@@ -196,13 +197,13 @@ static int parse_partition_cfg(const char *p_cfg_file,
 
     p_partition->pt_table.magic = BFLB_PT_MAGIC_CODE;
     p_partition->pt_table.entry_cnt = idx + 1;
-    /* 
+    /*
      * TODO: what is the crc32 in p_partition->pt_table.crc32?
      * unused?
      */
     p_partition->crc32 = calc_crc32((char *)&p_partition->pt_entries,
             sizeof p_partition->pt_entries);
-    
+
 fail:
     fclose(p_file);
     return ret_code;

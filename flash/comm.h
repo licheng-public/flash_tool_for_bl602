@@ -23,8 +23,10 @@
 
 #include "packet_comm.h"
 
-/*XXX: move read_to_buf out of common.* */
+/*XXX: move read_to_buf and dump_hex  out of common.* */
 int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data);
+
+void dump_hex(const char *prefix, uint8_t *p_data, uint32_t len);
 
 int hand_shake(int uart_fd, uint32_t baud_rate);
 
@@ -52,7 +54,7 @@ int flash_data(int uart_fd, uint8_t *data, uint32_t len_data, uint32_t target_ad
 
 int notify_flash_done(int uart_fd);
 
-int send_sha256(int uart_fd, uint32_t *sha256);
+int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t len);
 
 int send_finish(int uart_fd);
 

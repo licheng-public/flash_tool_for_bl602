@@ -22,4 +22,9 @@
 
 int uart_open(const char *p_uart_port, uint32_t baud_rate);
 int uart_close(int uart_id);
+
+#if 0
+int set_custom_baud_rate(int fd, uint32_t custom_baud);
+#endif
+
 #endif /* _UART_H */
