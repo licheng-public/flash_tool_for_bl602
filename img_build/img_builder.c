@@ -466,6 +466,7 @@ int main(int argc, char *argv[])
         struct stat bin_stats;
         char *p_buf = NULL;
         FILE *p_file_bin = fopen(bin_filename, "r");
+        uint32_t hash[8] = {0};
 
         /*
          * establish a big buffer to accormadate the size of space from
@@ -484,12 +485,16 @@ int main(int argc, char *argv[])
             return -2;
         }
         /* copy the image into the space at offset in buffer */
-        memset(p_buf + offset, 0, len);
+        memset(p_buf + offset, 0xFF, len);
         fread(p_buf + offset, bin_stats.st_size, 1, p_file_bin);
         fclose(p_file_bin);
-        /* calculate hash of the bin, and fill in bhc
-         */
-        calc_sha256((uint8_t *)p_buf + offset, len, (uint32_t *)&bhc.hash[0]);
+        /* calculate hash of the bin, and fill into bhc */
+        calc_sha256((uint8_t *)p_buf + offset, len, &hash[0]);
+        for (int i = 0; i < 8; i++) {
+            hash[i] = htobe32(hash[i]);
+        }
+        memcpy((void *)&bhc.hash[0], (void *)&hash[0], 32);
+        //calc_sha256((uint8_t *)p_buf + offset, len, (uint32_t *)&bhc.hash[0]);
 
 
     ret_code = parse_boot_header_cfg(cfg_filename, &bhc, len);
