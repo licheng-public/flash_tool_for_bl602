@@ -1,5 +1,5 @@
 /dts-v1/;
-/include/ "bl602_base.dtsi";
+///include/ "bl602_base.dtsi";
 // version: 17
 // last_comp_version: 16
 // boot_cpuid_phys: 0x0
@@ -35,8 +35,10 @@
             feature = "button";
             active = "Hi";
             mode = "multipress";
+            hbn_use = "disable";
             button {
                 debounce = <10>;
+                trig_level = "Hi";
                 short_press_ms {
                     start = <100>;
                     end = <3000>;
@@ -51,9 +53,7 @@
                     start = <15000>;
                     kevent = <4>;
                 };
-                trig_level = "Hi";
             };
-            hbn_use = "disable";
         };
     };
     i2s {
