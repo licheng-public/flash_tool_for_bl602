@@ -30,18 +30,28 @@ Generate the flash image
 1./ create partition image
     The partition configuration is specified to include all partition entries
     in the format of 'toml', e.g. partition_cfg_2M.toml. It might also define
-    the number of partitions at different locations.
-
-    The generated image(s) are  'partition.bin@addr'.
+    the number of partitions at different locations. The generated image(s)
+    are  'partition.bin@addr'.
+```
+    $./partition_gen -i ../image_and_config/partition_cfg_2M.toml -o partion.bin
+```
 
 2./ Generate boot2 image
     The inputs for generating boot2 image are raw blsp_boot.bin, and the
     configuration file which specifies the boot/efuse configuration, e.g.
     efuse_bootheader_cfg.conf. This procedure actually generates boot header,
     and packs the original blsp_boot.bin with it.
+```
+    $./img_gen -i ../image_and_config/efuse_bootheader_cfg.conf \
+      -b ../image_and_config/blsp_boot2.bin  -o ./boot2image.bin -s 0x2000
+```
 
 3./ Generate FW image
     Similiarly, this step packs the firmware image with the boot header.
+```
+    $./img_gen -i ../image_and_config/efuse_bootheader_cfg.conf \
+      -b ./sdk_app_helloworld.bin -o ./fw2.bin -s 0x1000
+```
 
 4./ Generate the device tree image in dtb
     The dts source file shared by Buffalolab is an almost DTS compliant file.
@@ -87,4 +97,13 @@ Generate the flash image
 Flash the images
 ----------------
 
-Still work in progress....
+The command of flashing is
+
+```
+./flash --uart /dev/ttyUSB0 --rate 230400 --partition ./partition.bin@0xe000 ./partition.bin@0xf000 \
+  --fw ./fw2.bin --dtb ./ro_params.dtb --eflash ./eflash_loader_40m.bin --boot2 ./boot2image.bin
+```
+
+Open issues
+-----------
+1. Unable to reshake hands after flashing yet. Probably related to baud rate
