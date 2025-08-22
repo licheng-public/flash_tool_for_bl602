@@ -433,6 +433,12 @@ int main(int argc, char *argv[])
     char *bin_filename = NULL;
     char *out_filename = NULL;
     Boot_Header_Config bhc;
+    uint32_t len;
+    struct stat bin_stats;
+    char *p_buf = NULL;
+    FILE *p_file_bin = NULL;
+    uint32_t hash[8] = {0};
+
 
     while ((opt = getopt(argc, argv, "i:b:o:s:")) != -1) {
         switch (opt) {
@@ -462,48 +468,47 @@ int main(int argc, char *argv[])
 
     memset(&bhc, 0, sizeof bhc);
 
-        uint32_t len;
-        struct stat bin_stats;
-        char *p_buf = NULL;
-        FILE *p_file_bin = fopen(bin_filename, "r");
-        uint32_t hash[8] = {0};
+    /*
+     * step 1: patch source image to align 16 bytes, read into the buffer
+     * ,calculate SHA256 and prefill into bhc
+     */
+    p_file_bin = fopen(bin_filename, "r");
+    /*
+     * establish a big buffer to accormadate the size of space from
+     * 0 to offset, followed by the original image
+     */
+    stat(bin_filename, &bin_stats);
+    len = (bin_stats.st_size + 15) / 16 * 16;
+    p_buf = malloc(offset + len);
+    if (p_buf == NULL) {
+        fprintf(stderr, "ERROR: failed to allocate enough memory\n");
+        return -1;
+    }
 
-        /*
-         * establish a big buffer to accormadate the size of space from
-         * 0 to offset, followed by the original image
-         */
-        stat(bin_filename, &bin_stats);
-        len = (bin_stats.st_size + 15) / 16 * 16;
-        p_buf = malloc(offset + len);
-        if (p_buf == NULL) {
-            fprintf(stderr, "ERROR: failed to allocate enough memory\n");
-            return -1;
-        }
+    if (p_file_bin == NULL) {
+        fprintf(stderr, "ERROR: failed to open image file\n");
+        return -2;
+    }
+    /* copy the image into the space at offset in buffer */
+    memset(p_buf + offset, 0xFF, len);
+    fread(p_buf + offset, bin_stats.st_size, 1, p_file_bin);
+    fclose(p_file_bin);
+    /* calculate hash of the bin, and fill into bhc */
+    calc_sha256((uint8_t *)p_buf + offset, len, &hash[0]);
+    for (int i = 0; i < 8; i++) {
+        hash[i] = htobe32(hash[i]);
+    }
+    memcpy((void *)&bhc.hash[0], (void *)&hash[0], 32);
+    //calc_sha256((uint8_t *)p_buf + offset, len, (uint32_t *)&bhc.hash[0]);
 
-        if (p_file_bin == NULL) {
-            fprintf(stderr, "ERROR: failed to open image file\n");
-            return -2;
-        }
-        /* copy the image into the space at offset in buffer */
-        memset(p_buf + offset, 0xFF, len);
-        fread(p_buf + offset, bin_stats.st_size, 1, p_file_bin);
-        fclose(p_file_bin);
-        /* calculate hash of the bin, and fill into bhc */
-        calc_sha256((uint8_t *)p_buf + offset, len, &hash[0]);
-        for (int i = 0; i < 8; i++) {
-            hash[i] = htobe32(hash[i]);
-        }
-        memcpy((void *)&bhc.hash[0], (void *)&hash[0], 32);
-        //calc_sha256((uint8_t *)p_buf + offset, len, (uint32_t *)&bhc.hash[0]);
-
-
+    /* step 2: parse Boot Header Config file into bhc */
     ret_code = parse_boot_header_cfg(cfg_filename, &bhc, len);
     if (ret_code == 0) {
         /* now pre-fill 0xFF and overwrite with Boot_Header_Config in buffer*/
         memset(p_buf, 0xFF, offset);
         memcpy(p_buf, &bhc, sizeof bhc);
 
-        /* finally write packed image bin */
+        /* step 3: finally write packed image bin */
         ret_code = write_file(out_filename, (void *)p_buf, offset + len);
         if (ret_code != 0) {
             return ret_code;
