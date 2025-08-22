@@ -103,7 +103,7 @@ static uint32_t calc_crc32(const char *src, uint32_t sz)
  * in toml format. Intended to fullfill the need without dependency.
  */
 static int parse_partition_cfg(const char *p_cfg_file,
-    pt_table_stuff_config_t *p_partition,
+    pt_table_stuff_config_t *p_partition, uint32_t *p_sz_part_table,
     uint32_t *p_partition_address, uint32_t *addr_cnt)
 {
     int ret_code = 0;
@@ -197,13 +197,37 @@ static int parse_partition_cfg(const char *p_cfg_file,
 
     p_partition->pt_table.magic = BFLB_PT_MAGIC_CODE;
     p_partition->pt_table.entry_cnt = idx + 1;
-    /*
-     * TODO: what is the crc32 in p_partition->pt_table.crc32?
-     * unused?
-     */
+    /* the crc32 in p_partition->pt_table.crc32  */
+    p_partition->pt_table.crc32 = calc_crc32((char *)&p_partition->pt_table,
+            offsetof(pt_table_config_t, crc32));
+    //*
+    // * ------------------------- NOTE ----------------------------
+    // * The structure
+    // * typedef struct {
+    // *    pt_table_config_t pt_table;                 /*!< Partition table */
+    // *    pt_table_entry_config_t pt_entries[PT_ENTRY_MAX];    /*!< Partition entries */
+    // *    uint32_t crc32;                         /*!< Partition entries crc32 */
+    // * } pt_table_stuff_config_t;
+    // *
+    // * is NOT the actual partition format. Instead, it contains only the valid
+    // * partition entry, followed by the CRC32. Of course, the crc32 only count
+    // * on the actual entries. PT_ENTRY_MAX is defined as 16. If there are 5
+    // * partition entry defined in partition table configuration, the partition
+    // * binary would have {pt_table, 5 pt_entries, crc32}.
+    // *
+    // * The structure would be better if moving the field of 'crc32' to the front
+    // * of the field of 'pt_entries'.
+    // *
     p_partition->crc32 = calc_crc32((char *)&p_partition->pt_entries,
-            sizeof p_partition->pt_entries);
+            p_partition->pt_table.entry_cnt * sizeof(p_partition->pt_entries[0]));
+    /* copy the crc32 into the location of the end of last valid partition entry */
+    memcpy((char *)p_partition + offsetof(pt_table_stuff_config_t, pt_entries) +
+            p_partition->pt_table.entry_cnt * sizeof(p_partition->pt_entries[0]),
+            &(p_partition->crc32), sizeof(p_partition->crc32));
 
+    *p_sz_part_table = sizeof(p_partition->pt_table) +
+            p_partition->pt_table.entry_cnt * sizeof(p_partition->pt_entries[0]) +
+            sizeof(p_partition->crc32);
 fail:
     fclose(p_file);
     return ret_code;
@@ -237,6 +261,7 @@ int main(int argc, char *argv[])
     pt_table_stuff_config_t partition;
     uint32_t partition_addr[16] = {0};
     uint32_t addr_cnt;
+    uint32_t sz_ptable = 0;
 
     while ((opt = getopt(argc, argv, "i:o:")) != -1) {
         switch (opt) {
@@ -259,7 +284,8 @@ int main(int argc, char *argv[])
     }
 
     memset(&partition, 0, sizeof partition);
-    ret_code = parse_partition_cfg(in_filename, &partition, partition_addr, &addr_cnt);
+    ret_code = parse_partition_cfg(in_filename, &partition, &sz_ptable,
+            partition_addr, &addr_cnt);
     if (ret_code == 0) {
         /* write partition bin */
         char bin_file[256] = {0};
@@ -267,13 +293,13 @@ int main(int argc, char *argv[])
         if (addr_cnt != 0) {
             for (i = 0; i < addr_cnt; i++) {
                 sprintf(bin_file, "%s@0x%x", out_filename, partition_addr[i]);
-                ret_code = write_file(bin_file, (void *)&partition, sizeof partition);
+                ret_code = write_file(bin_file, (void *)&partition, sz_ptable);
                 if (ret_code != 0) {
                     goto fail;
                 }
             }
         } else {
-            ret_code = write_file(out_filename, (void *)&partition, sizeof partition);
+            ret_code = write_file(out_filename, (void *)&partition, sz_ptable);
             if (ret_code != 0) {
                 goto fail;
             }
