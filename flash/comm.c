@@ -268,16 +268,19 @@ int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data) {
     }
     ret_code = stat(p_file_name, &f_stat);
     if (ret_code < 0) {
+        fprintf(stderr, "ERROR: fail to get stats of '%s'", p_file_name);
         return -2;
     }
     p_local = (uint8_t *)malloc(f_stat.st_size);
     if (p_local == NULL) {
+        fprintf(stderr, "ERROR: malloc fail for '%s'", p_file_name);
         return -3;
     }
     memset(p_local, 0, f_stat.st_size);
 
     f = fopen(p_file_name, "r");
     if (f == NULL) {
+        fprintf(stderr, "ERROR: fail to open %s\n", p_file_name);
         return -4;
     }
     /* fread should return 1, skip check ret value intentionally below */
@@ -300,6 +303,7 @@ int hand_shake(int uart_fd, uint32_t baud_rate)
     ssize_t bytes_n;
     ssize_t write_n;
 
+    fprintf(stdout, "hand shake with rate %u\n", baud_rate);
     /*
      * approximate the number of bytes of 0x55 to send in 5 mseconds
      * using the current baud rate with 8N1
@@ -739,7 +743,7 @@ int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t siz
                 printf("sha256[%d] = 0x%08x bl_resp.sha256[%d] = 0x%08x %s\n",
                         i, sha256[i],
                         i, bl_resp.sha256[i],
-                        (sha256[i] == bl_resp.sha256[i] ? " ":"*")
+                        (sha256[i] == bl_resp.sha256[i] ? " ":"X")
                         );
             }
             ret_code = 0;
@@ -752,8 +756,14 @@ int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t siz
 }
 
 int send_finish(int uart_fd, uint32_t baud_rate) {
-    fprintf(stderr, "WARNING: might not work due to lower baud rate\n");
-    return hand_shake(uart_fd, baud_rate);
+    /*
+     * uart_fd might be open for different baud_rate from this.
+     * And note: cfsetospeed only supports up to 230400. Thus,
+     * skip this now. If really necessary, close this fd, open it
+     * with this_baud_rate, and try to hand_shake.
+     */
+    return 0;
+    /* return hand_shake(uart_fd, baud_rate); */
 }
 
 int load_pub_key(int uart_fd) {

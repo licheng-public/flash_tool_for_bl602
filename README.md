@@ -33,7 +33,7 @@ Generate the flash image
     the number of partitions at different locations. The generated image(s)
     are  'partition.bin@addr'.
 ```
-    $./partition_gen -i ../image_and_config/partition_cfg_2M.toml -o partion.bin
+    $./partition_gen -i ../image_and_config/partition_cfg_2M.toml -o partition.bin
 ```
 
 2./ Generate boot2 image

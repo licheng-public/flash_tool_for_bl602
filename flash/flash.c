@@ -267,8 +267,7 @@ error_p:
     }
 
     if (ret_code == 0) {
-        printf("------------- sending finish ------------\n");
-        ret_code = send_finish(uart_fd);
+        ret_code = send_finish(uart_fd, 2000000);
         if (ret_code == 0) {
             fprintf(stderr, "SUCCEED: flash completed\n");
         } else {

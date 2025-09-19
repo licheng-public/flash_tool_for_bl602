@@ -56,6 +56,6 @@ int notify_flash_done(int uart_fd);
 
 int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t len);
 
-int send_finish(int uart_fd);
+int send_finish(int uart_fd, uint32_t baud_rate);
 
 #endif /* _COMM_H */
