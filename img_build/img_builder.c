@@ -473,6 +473,10 @@ int main(int argc, char *argv[])
      * ,calculate SHA256 and prefill into bhc
      */
     p_file_bin = fopen(bin_filename, "r");
+    if (p_file_bin == NULL) {
+        fprintf(stderr, "ERROR: failed to open image file\n");
+        return -2;
+    }
     /*
      * establish a big buffer to accormadate the size of space from
      * 0 to offset, followed by the original image
@@ -482,13 +486,10 @@ int main(int argc, char *argv[])
     p_buf = malloc(offset + len);
     if (p_buf == NULL) {
         fprintf(stderr, "ERROR: failed to allocate enough memory\n");
+        fclose(p_file_bin);
         return -1;
     }
 
-    if (p_file_bin == NULL) {
-        fprintf(stderr, "ERROR: failed to open image file\n");
-        return -2;
-    }
     /* copy the image into the space at offset in buffer */
     memset(p_buf + offset, 0xFF, len);
     fread(p_buf + offset, bin_stats.st_size, 1, p_file_bin);
