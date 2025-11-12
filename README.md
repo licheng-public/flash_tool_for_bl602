@@ -27,6 +27,9 @@ and the open source flash tool from bouffalolab,
 Generate the flash image
 -----------------------
 
+**[Wed Nov 12 10:29:48 CST 2025] update** thanks to chatgpt, a Makefile is added so that
+you can run 'make' directly to build all executables into bin directory.
+
 1./ create partition image
     The partition configuration is specified to include all partition entries
     in the format of 'toml', e.g. partition_cfg_2M.toml. It might also define
