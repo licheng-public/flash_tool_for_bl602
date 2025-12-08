@@ -261,6 +261,7 @@ int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data) {
     int ret_code = 0;
     struct stat f_stat;
     uint8_t *p_local = NULL;
+    ssize_t items_n = 0;
     FILE *f = NULL;
 
     if (p_file_name == NULL) {
@@ -284,13 +285,19 @@ int read_to_buf(char *p_file_name, uint8_t **p_buf, uint32_t *p_sz_data) {
         return -4;
     }
     /* fread should return 1, skip check ret value intentionally below */
-    fread((void *)p_local, f_stat.st_size, 1, f);
+    items_n = fread((void *)p_local, f_stat.st_size, 1, f);
+    if (items_n != 1) {
+        fprintf(stderr, "ERROR: incorrect items read\n");
+        ret_code = -5;
+        goto fail;
+    }
 
     *p_buf = p_local;
     *p_sz_data = f_stat.st_size;
 
+fail:
     fclose(f);
-    return 0;
+    return ret_code;
 }
 
 /*
@@ -315,8 +322,13 @@ int hand_shake(int uart_fd, uint32_t baud_rate)
     p_stream_hfive = (uint8_t *) malloc(bytes_n);
     memset(p_stream_hfive, 0x55, bytes_n);
     write_n = write(uart_fd, (void *)p_stream_hfive, bytes_n);
-    (void) write_n; /* ignore the warning */
     free(p_stream_hfive);
+    if (write_n != bytes_n) {
+        ret_status = -1;
+        fprintf(stderr, "ERROR: incorrect bytes written (%lu vs %lu)\n",
+                write_n, bytes_n);
+        goto fail;
+    }
 
     /* now read from the device */
     while (1) {
@@ -345,6 +357,7 @@ int hand_shake(int uart_fd, uint32_t baud_rate)
         } /* bytes_n */
     }
 
+fail:
     return ret_status; /* zero is OK */
 }
 
@@ -404,6 +417,7 @@ int load_boot_header(int uart_fd, char *eflash_file_name)
     int ret_code = 0;
     FILE *f = NULL;
     boot_header_pkt_t boot_header_pkt;
+    ssize_t bytes_n = 0;
 
     if (eflash_file_name == NULL) {
         return -1;
@@ -415,24 +429,35 @@ int load_boot_header(int uart_fd, char *eflash_file_name)
     /* construct the packet to device and send */
     init_header(COMMAND_BOOT_HDR, sizeof boot_header_pkt.boot_header,
             &boot_header_pkt.bh_hdr);
-    (void) fread(&boot_header_pkt.boot_header, sizeof boot_header_pkt.boot_header,
+    bytes_n = fread(&boot_header_pkt.boot_header, sizeof boot_header_pkt.boot_header,
             1, f);
     fclose(f);
-    write(uart_fd, (void *)&boot_header_pkt, sizeof boot_header_pkt);
+    if (bytes_n != 1) {
+        ret_code = -3;
+        fprintf(stderr, "ERROR: incorrect items read\n");
+        goto fail;
+    }
+    bytes_n = write(uart_fd, (void *)&boot_header_pkt, sizeof boot_header_pkt);
+    if (bytes_n != sizeof boot_header_pkt) {
+        ret_code = 1;
+        fprintf(stderr, "ERROR: fewer bytes written\n");
+        goto fail;
+    }
 
     ret_code = read_check_response(uart_fd, NULL);
-
     if (ret_code == 0) {
         fprintf(stdout, "SUCCEED: load boot header\n\n");
     } else {
         fprintf(stderr, "ERROR: failed in loading boot header\n\n");
     }
 
+fail:
     return ret_code;
 }
 
 int load_segment_header(int uart_fd, char *eflash_file_name) {
     int ret_code = 0;
+    ssize_t bytes_n = 0;
     FILE *f = NULL;
     segment_header_pkt_t segment_header_pkt;
 
@@ -451,9 +476,14 @@ int load_segment_header(int uart_fd, char *eflash_file_name) {
             &segment_header_pkt.seg_hdr);
     /* skip the section of Boot_Header_Config */
     fseek(f, sizeof(Boot_Header_Config), SEEK_SET);
-    (void) fread(&segment_header_pkt.segment, sizeof segment_header_pkt.segment,
+    bytes_n = fread(&segment_header_pkt.segment, sizeof segment_header_pkt.segment,
             1, f);
     fclose(f);
+    if (bytes_n != 1) {
+        fprintf(stderr, "ERROR: incorrect number of items read\n");
+        ret_code = -3;
+        goto fail;
+    }
 #ifdef DEBUG
     dump_hex("segment header", (uint8_t *)&segment_header_pkt, sizeof segment_header_pkt);
     printf("dest_addr = 0x%x len = %u, rsvd = 0x%x crc32 = 0x%x\n",
@@ -462,7 +492,12 @@ int load_segment_header(int uart_fd, char *eflash_file_name) {
             segment_header_pkt.segment.rsvd,
             segment_header_pkt.segment.crc32);
 #endif
-    write(uart_fd, (void *)&segment_header_pkt, sizeof segment_header_pkt);
+    bytes_n = write(uart_fd, (void *)&segment_header_pkt, sizeof segment_header_pkt);
+    if (bytes_n != sizeof segment_header_pkt) {
+        ret_code = -1;
+        fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+        goto fail;
+    }
 
     /* check response */
     ret_code = read_check_response(uart_fd, NULL);
@@ -472,12 +507,13 @@ int load_segment_header(int uart_fd, char *eflash_file_name) {
         fprintf(stderr, "ERROR: fail to load segement header\n\n");
     }
 
+fail:
     return ret_code;
 }
 
 int load_segment_data(int uart_fd, char *eflash_file_name) {
     int ret_code = 0;
-
+    ssize_t bytes_n = 0;
     FILE *f = NULL;
     segment_data_pkt_t segment_data_pkt;
     int i = 0;
@@ -523,8 +559,13 @@ int load_segment_data(int uart_fd, char *eflash_file_name) {
 
         /* fill the header */
         init_header(COMMAND_SEG_DATA, real_len, &segment_data_pkt.seg_data_hdr);
-        write(uart_fd, (void *)&segment_data_pkt, real_len +
+        bytes_n = write(uart_fd, (void *)&segment_data_pkt, real_len +
                 sizeof(segment_data_pkt.seg_data_hdr));
+        if (bytes_n != real_len + sizeof(segment_data_pkt.seg_data_hdr)) {
+            ret_code = -1;
+            fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+            goto fail;
+        }
 
         /* check response */
         ret_code = read_check_response(uart_fd, NULL);
@@ -545,10 +586,16 @@ fail:
 
 int check_image(int uart_fd) {
     int ret_code = 0;
+    ssize_t bytes_n = 0;
     image_check_pkt_t img_check_pkt;
 
     init_header(COMMAND_IMG_CHECK, 0, &img_check_pkt.img_check_hdr);
-    write(uart_fd, &img_check_pkt, sizeof img_check_pkt);
+    bytes_n = write(uart_fd, &img_check_pkt, sizeof img_check_pkt);
+    if (bytes_n != sizeof img_check_pkt) {
+        ret_code = -1;
+        fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+        goto fail;
+    }
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
@@ -557,15 +604,22 @@ int check_image(int uart_fd) {
         fprintf(stderr, "ERROR: fail to check image\n\n");
     }
 
+fail:
     return ret_code;
 }
 
 int run_image(int uart_fd) {
     int ret_code = 0;
+    ssize_t bytes_n = 0;
     image_run_pkt_t img_run_pkt;
 
     init_header(COMMAND_IMG_RUN, 0, &img_run_pkt.img_run_hdr);
-    write(uart_fd, &img_run_pkt, sizeof img_run_pkt);
+    bytes_n = write(uart_fd, &img_run_pkt, sizeof img_run_pkt);
+    if (bytes_n != sizeof img_run_pkt) {
+        ret_code = -1;
+        fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+        goto fail;
+    }
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
@@ -574,11 +628,13 @@ int run_image(int uart_fd) {
         fprintf(stderr, "ERROR: fail to run image\n\n");
     }
 
+fail:
     return ret_code;
 }
 
 int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
     int ret_code = 0;
+    ssize_t bytes_n = 0;
     uint32_t i = 0;
     uint32_t end_addr = start_addr + len;
     erase_pkt_t erase_pkt;
@@ -596,7 +652,12 @@ int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
     for (i = off_start_crc; i < sizeof (erase_pkt); i++) {
         erase_pkt.erase_hdr.rsvd_08 += p_char[i];
     }
-    write(uart_fd, &erase_pkt, sizeof erase_pkt);
+    bytes_n = write(uart_fd, &erase_pkt, sizeof erase_pkt);
+    if (bytes_n != sizeof erase_pkt) {
+        ret_code = -1;
+        fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+        goto fail;
+    }
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
@@ -607,6 +668,7 @@ int erase_storage(int uart_fd, uint32_t start_addr, uint32_t len){
                 end_addr);
     }
 
+fail:
     return ret_code;
 }
 
@@ -614,6 +676,7 @@ int flash_data(int uart_fd, uint8_t *p_data, uint32_t len_data, uint32_t target_
     int ret_code = 0;
     int i = 0;
     int j = 0;
+    ssize_t bytes_n = 0;
     uint8_t *p_curr = p_data;
     uint8_t *p_char = NULL;
     uint32_t len_to_send = 0;
@@ -648,8 +711,14 @@ int flash_data(int uart_fd, uint8_t *p_data, uint32_t len_data, uint32_t target_
             p_pkt->crc08 += *p_char;
             p_char++;
         }
-        write(uart_fd, p_pkt, len_to_send + sizeof(p_pkt->addr)
+        bytes_n = write(uart_fd, p_pkt, len_to_send + sizeof(p_pkt->addr)
                 + sizeof(p_pkt->flash_data_hdr));
+        if (bytes_n != len_to_send + sizeof(p_pkt->addr)
+                + sizeof(p_pkt->flash_data_hdr)) {
+            fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+            ret_code = -2;
+            goto fail;
+        }
 
         /* check response */
         ret_code = read_check_response(uart_fd, NULL);
@@ -679,12 +748,18 @@ fail:
 
 int notify_flash_done(int uart_fd) {
     int ret_code = 0;
+    ssize_t bytes_n = 0;
     flash_done_pkt_t flash_done_pkt;
 
     memset(&flash_done_pkt, 0, sizeof (flash_done_pkt));
     init_header(COMMAND_PROG_OK, 0, &flash_done_pkt.flash_done_hdr);
 
-    write(uart_fd, &flash_done_pkt, sizeof flash_done_pkt);
+    bytes_n = write(uart_fd, &flash_done_pkt, sizeof flash_done_pkt);
+    if (bytes_n != sizeof flash_done_pkt) {
+        fprintf(stderr, "ERROR: incorrect number of bytes written\n");
+        ret_code = 1;
+        goto fail;
+    }
 
     ret_code = read_check_response(uart_fd, NULL);
     if (ret_code == 0) {
@@ -693,6 +768,7 @@ int notify_flash_done(int uart_fd) {
         fprintf(stderr, "ERROR: nack flash \n\n" );
     }
 
+fail:
     return ret_code;
 }
 
@@ -700,6 +776,7 @@ int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t siz
     int ret_code = 0;
     sha256_pkt_t sha256_pkt;
     bl_resp_t bl_resp;
+    ssize_t bytes_n = 0;
     uint8_t *p_char = (uint8_t *)&sha256_pkt;
     uint32_t i = 0;
     uint32_t crc_start = offsetof(sha256_pkt_t, sha256_hdr)
@@ -722,7 +799,12 @@ int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t siz
         sha256_pkt.sha256_hdr.rsvd_08 += p_char[i];
     }
 
-    write(uart_fd, &sha256_pkt, sizeof sha256_pkt);
+    bytes_n = write(uart_fd, &sha256_pkt, sizeof sha256_pkt);
+    if (bytes_n != sizeof sha256_pkt) {
+        ret_code = 1;
+        fprintf(stderr, "ERROR: fewer bytes written \n");
+        goto fail;
+    }
 
     memset(&bl_resp, 0, sizeof bl_resp);
     ret_code = read_check_response(uart_fd, &bl_resp);
@@ -752,6 +834,7 @@ int send_sha256(int uart_fd, uint32_t *sha256, uint32_t start_addr, uint32_t siz
         fprintf(stderr, "ERROR: fail in getting response for SHA256 \n\n" );
     }
 
+fail:
     return ret_code;
 }
 

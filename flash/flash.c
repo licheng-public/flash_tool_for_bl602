@@ -48,13 +48,13 @@ void print_help(const char *p_app_name)
  */
 int main(int argc, char *argv[])
 {
-    int ret_code;
+    int ret_code = 0;
     int uart_fd = -1;
-    uint32_t baud_rate;
+    uint32_t baud_rate = 230400;
     boot_info_t boot_info;
     int i = 1;
     int j = 0;
-    char *p_uart_port;
+    char *p_uart_port = NULL;
     char *fw_file = NULL;
     char *dtb_file = NULL;
     char *boot2_file = NULL;
