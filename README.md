@@ -253,9 +253,13 @@ SUCCEED: flash completed
 Cheat sheet
 -----------
 ./partition_gen -i ./partition_cfg_2M.toml -o partition.bin
+
 ./img_gen -i ./efuse_bootheader_cfg.conf -b ./blsp_boot2.bin  -o ./boot2image.bin -s 0x2000
+
 ./img_gen -i ./efuse_bootheader_cfg.conf -b ./sdk_app_helloworld.bin -o ./fw2.bin -s 0x1000
+
  dtc -I dts -O dtb bl_factory_params_IoTKitA_40M.dts -o ./ro_params.dtb
+
 ./flash --uart /dev/ttyUSB0 --rate 230400 --partition ./partition.bin@0xe000 ./partition.bin@0xf000   --fw ./fw2.bin --dtb ./ro_params.dtb --eflash ./eflash_loader_40m.bin --boot2 ./boot2image.bin
 
 Open issues
